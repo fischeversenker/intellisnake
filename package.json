@@ -1,0 +1,22 @@
+{
+  "name": "intellisnake",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsc",
+    "serve": "live-server public"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "live-server": "^1.2.1",
+    "typescript": "^3.7.4"
+  },
+  "dependencies": {
+    "vector": "0.0.4",
+    "vectors": "^0.1.0"
+  }
+}
