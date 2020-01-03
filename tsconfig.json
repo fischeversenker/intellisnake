@@ -11,7 +11,7 @@
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "watch": true,
-    "lib": ["es5", "es2015.promise", "dom", "es2015"],
+    "lib": ["es5", "es2015.promise", "dom", "es2015", "es2017"],
     "typeRoots": [
       "node_modules/@types"
     ],
