@@ -1,11 +1,12 @@
-import { GameObject, Acceleration } from "./life.js";
+import { GameObject, Vector, GameObjectType } from "./world.js";
 
-const MAX_FOOD_AGE = 20 * 1000;
+const MAX_FOOD_AGE = 5 * 1000;
 
 export class Food implements GameObject {
 
-  size = 4;
-  acceleration: Acceleration = { x: 0, y: 0 };
+  type = GameObjectType.FOOD;
+  size = 2;
+  velocity: Vector = { x: 0, y: 0 };
   dead = false;
   appearance: number = 0;
 
@@ -15,7 +16,7 @@ export class Food implements GameObject {
     public y: number,
   ) { }
 
-  updateAcceleration(acceleration: Acceleration): void { }
+  updateVelocity(velocity: Vector): void { }
 
   update(): void {
     if (this.dead) {
@@ -36,6 +37,12 @@ export class Food implements GameObject {
       this.appearance = Date.now();
     }
     context.fillStyle = 'red';
-    context.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+    context.beginPath();
+    context.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+    context.fill();
+  }
+
+  collidesWith(position: Vector): boolean {
+    return Math.abs(this.x - position.x) < this.size && Math.abs(this.y - position.y) < this.size;
   }
 }

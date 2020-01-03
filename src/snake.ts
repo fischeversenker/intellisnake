@@ -1,17 +1,17 @@
-import { GameObject, Acceleration } from "./life.js";
+import { GameObject, Vector, GameObjectType } from "./world.js";
 
-export const SNAKE_SIZE = 4;
-export const SNAKE_LENGTH = 200;
+export const SNAKE_LENGTH = 40;
 
 export class Snake implements GameObject {
 
-  size = SNAKE_SIZE;
-  acceleration: { x: number, y: number } = { x: 1, y: 1 };
+  type = GameObjectType.SNAKE;
+  size = 3;
+  velocity: { x: number, y: number } = { x: 1, y: 1 };
 
-  energyLevel = 2000;
+  energyLevel = 1000;
   dead: boolean = false;
 
-  private tail: any[] = [];
+  tail: any[] = [];
 
   constructor(
     public id: string,
@@ -20,12 +20,12 @@ export class Snake implements GameObject {
     public canvasWidth: number,
     public canvasHeight: number,
   ) {
-    this.acceleration.x = (Math.random() - 0.5) * 2;
-    this.acceleration.y = (Math.random() - 0.5) * 2;
+    this.velocity.x = (Math.random() - 0.5);
+    this.velocity.y = (Math.random() - 0.5);
   }
 
-  updateAcceleration(newAcceleration: Acceleration): void {
-    this.acceleration = newAcceleration;
+  updateVelocity(newVelocity: Vector): void {
+    this.velocity = newVelocity;
   }
 
   update(): void {
@@ -37,8 +37,8 @@ export class Snake implements GameObject {
       return;
     }
 
-    this.x += this.acceleration.x;
-    this.y += this.acceleration.y;
+    this.x += this.velocity.x;
+    this.y += this.velocity.y;
 
     if (this.x < 0) {
       this.x = this.canvasWidth;
@@ -59,25 +59,41 @@ export class Snake implements GameObject {
 
     this.tail.unshift({ x: this.x, y: this.y });
     this.energyLevel--;
-    this.energyLevel -= this.accelerationMagnitude / 2;
+    this.energyLevel -= this.velocityMagnitude / 2;
   }
 
   draw(context: CanvasRenderingContext2D): void {
-    const color = this.dead ? 'darkred' : 'green';
+    if (this.dead) {
+      return;
+    }
+    const color = 'green';
 
     this.tail.forEach((position: any) => {
-      context.fillStyle = color;
-      context.fillRect(position.x - SNAKE_SIZE / 2, position.y - SNAKE_SIZE / 2, SNAKE_SIZE, SNAKE_SIZE);
+      this.drawCircle(context, position.x, position.y, color, this.size * 0.5);
     });
 
-    context.fillStyle = color;
-    context.fillRect(this.x - SNAKE_SIZE / 2, this.y - SNAKE_SIZE / 2, SNAKE_SIZE, SNAKE_SIZE);
+    this.drawCircle(context, this.x, this.y, color, this.size);
 
     context.fillStyle = 'black';
-    context.fillText(`Energy: ${Math.round(this.energyLevel)}`, this.x + SNAKE_SIZE, this.y);
+    context.fillText(`Energy: ${Math.round(this.energyLevel)}`, this.x + this.size, this.y);
   }
 
-  private get accelerationMagnitude(): number {
-    return Math.sqrt(Math.pow(this.acceleration.x, 2) + Math.pow(this.acceleration.y, 2));
+  collidesWith(position: Vector): boolean {
+    const headShot = Math.abs(this.x - position.x) < this.size && Math.abs(this.y - position.y) < this.size;
+    const tailShot = this.tail.some(tailPos => {
+      return Math.abs(tailPos.x - position.x) < this.size && Math.abs(tailPos.y - position.y) < this.size;
+    });
+    return headShot || tailShot;
+  }
+
+  private drawCircle(context: CanvasRenderingContext2D, x: number, y: number, color: string, size: number) {
+    context.beginPath();
+    context.fillStyle = color;
+    context.arc(x, y, size, 0, 2 * Math.PI);
+    context.fill();
+  }
+
+  private get velocityMagnitude(): number {
+    return Math.sqrt(Math.pow(this.velocity.x, 2) + Math.pow(this.velocity.y, 2));
   }
 }
