@@ -37,12 +37,16 @@ export type Vector = {
 
 let foodCount = 0;
 
+const AI_CALL_FREQUENCY = 50;
+const DEBUG_FREQUENCY = 10;
+
 export class World {
 
   running: boolean = false;
   width: number;
   height: number;
   private webSocketAnswerPending = false;
+  private webSocketStartingPhase = true;
 
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
@@ -51,11 +55,10 @@ export class World {
     public canvas: HTMLCanvasElement,
     public context: CanvasRenderingContext2D,
     private webSocket: WebSocket,
+    private debug: HTMLPreElement,
   ) {
     this.width = canvas.width;
     this.height = canvas.height;
-
-    webSocket.onmessage = (evt: any) => this.onWebSocketMessage(evt);
   }
 
   begin() {
@@ -74,35 +77,43 @@ export class World {
       return;
     }
 
-      this.context.fillStyle = 'white';
-      this.context.fillRect(0, 0, this.width, this.height);
+    this.context.fillStyle = 'white';
+    this.context.fillRect(0, 0, this.width, this.height);
 
-      this.gameObjects.forEach(gO => {
-        gO.update();
-        gO.draw(this.context);
+    const markedForDeletion: Array<GameObject> = [];
 
-        // check for collisions if this is a snake
-        if (gO.type === GameObjectType.SNAKE) {
-          this.gameObjects.filter(otherGO => otherGO !== gO).forEach(otherGO => {
-            if (gO.dead || otherGO.dead) { return; }
+    this.gameObjects.forEach(gO => {
+      gO.update();
+      gO.draw(this.context);
 
-            if (otherGO.collidesWith(gO)) {
-              if (otherGO.type === GameObjectType.FOOD) {
+      // check for collisions if this is a snake
+      if (gO.type === GameObjectType.SNAKE) {
+        this.gameObjects.filter(otherGO => otherGO !== gO).forEach(otherGO => {
+          if (gO.dead || otherGO.dead) { return; }
+
+          if (otherGO.collidesWith(gO)) {
+            if (otherGO.type === GameObjectType.FOOD) {
               (gO as Snake).eat(otherGO as Food);
-              }
-              if (otherGO.type === GameObjectType.SNAKE) {
-                gO.dead = true;
-              }
             }
-          });
-        }
-      });
+            if (otherGO.type === GameObjectType.SNAKE) {
+              gO.dead = true;
+            }
+          }
+        });
+      }
+
+      if (gO.dead) {
+        markedForDeletion.push(gO);
+      }
+    });
+
+    this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
 
     if (Math.random() > 0.97) {
       this.addGameObject(new Food(String(foodCount++), Math.random() * this.width, Math.random() * this.height));
     }
 
-    if (this.tickCount % 20 === 0 && this.webSocket.readyState === WebSocket.OPEN && !this.webSocketAnswerPending) {
+    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && !this.webSocketAnswerPending) {
       const wsData: any = this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE).reduce((acc, gO) => ({
         ...acc,
         [gO.id]: {
@@ -114,6 +125,10 @@ export class World {
       }), {});
       this.webSocket.send(JSON.stringify(wsData));
       this.webSocketAnswerPending = true;
+    }
+
+    if (this.tickCount % DEBUG_FREQUENCY === 0) {
+      this.debug.innerHTML = JSON.stringify(this.gameObjects.length, null, 2);
     }
 
     this.tickCount++;
@@ -149,17 +164,17 @@ export class World {
     return result;
   }
 
-  private onWebSocketMessage(event: any) {
+  onWebSocketMessage(event: any) {
     const data = JSON.parse(event.data);
     console.log(`[WORLD]: received data from websocket:`, data);
     for (let destination in data) {
       let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
-    if (destinationGameObject && destinationGameObject.updateVelocity) {
+      if (destinationGameObject && destinationGameObject.updateVelocity) {
         const x = data[destinationGameObject.id][0];
         const y = data[destinationGameObject.id][1];
-      destinationGameObject.updateVelocity({ x, y });
+        destinationGameObject.updateVelocity({ x, y });
+      }
     }
-  }
     this.webSocketAnswerPending = false;
   }
 }
