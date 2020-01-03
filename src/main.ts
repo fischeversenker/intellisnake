@@ -1,8 +1,8 @@
 import { World } from "./world.js";
 import { Snake } from "./snake.js";
 
-export const CANVAS_WIDTH = 100;
-export const CANVAS_HEIGHT = 100;
+export const CANVAS_WIDTH = 50;
+export const CANVAS_HEIGHT = 50;
 
 (function() {
   let canvas: HTMLCanvasElement;
@@ -21,25 +21,34 @@ export const CANVAS_HEIGHT = 100;
     const webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
     webSocket.onclose = ev => console.log(ev);
 
-    newWorld(webSocket);
+    world = newWorld(webSocket);
 
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r') {
-        newWorld(webSocket);
+        world = newWorld(webSocket);
+      }
+
+      if (evt.key === 'p') {
+        if (world.running) {
+          world.stop();
+        } else {
+          world.begin();
+        }
       }
     });
   });
 
-  function newWorld(ws: WebSocket) {
+  function newWorld(ws: WebSocket): World {
     world = new World(canvas, context, ws);
     const snake1 = new Snake('0', Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT);
     const snake2 = new Snake('1', Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT);
     const snake3 = new Snake('2', Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT);
     world.addGameObject(snake1);
-    // world.addGameObject(snake2);
-    // world.addGameObject(snake3);
+    world.addGameObject(snake2);
+    world.addGameObject(snake3);
 
     world.begin();
+    return world;
   }
 
 })();

@@ -1,4 +1,5 @@
 import { GameObject, Vector, GameObjectType } from "./world.js";
+import { Food } from "./food.js";
 
 export const SNAKE_LENGTH = 40;
 
@@ -8,7 +9,7 @@ export class Snake implements GameObject {
   size = 3;
   velocity: { x: number, y: number } = { x: 1, y: 1 };
 
-  energyLevel = 1000;
+  energyLevel = 5000;
   dead: boolean = false;
 
   tail: any[] = [];
@@ -75,7 +76,7 @@ export class Snake implements GameObject {
     this.drawCircle(context, this.x, this.y, color, this.size);
 
     context.fillStyle = 'black';
-    context.fillText(`Energy: ${Math.round(this.energyLevel)}`, this.x + this.size, this.y);
+    context.fillText(`Id: ${this.id}, Energy: ${Math.round(this.energyLevel)}`, this.x + this.size, this.y);
   }
 
   collidesWith(position: Vector): boolean {
@@ -84,6 +85,11 @@ export class Snake implements GameObject {
       return Math.abs(tailPos.x - position.x) < this.size && Math.abs(tailPos.y - position.y) < this.size;
     });
     return headShot || tailShot;
+  }
+
+  eat(food: Food) {
+    this.energyLevel += food.value;
+    food.dead = true;
   }
 
   private drawCircle(context: CanvasRenderingContext2D, x: number, y: number, color: string, size: number) {

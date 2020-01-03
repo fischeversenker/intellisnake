@@ -39,9 +39,10 @@ let foodCount = 0;
 
 export class World {
 
-  private running: boolean = false;
+  running: boolean = false;
   width: number;
   height: number;
+  private webSocketAnswerPending = false;
 
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
@@ -64,8 +65,15 @@ export class World {
     }
   }
 
+  stop() {
+    this.running = false;
+  }
+
   update() {
-    if (this.running) {
+    if (!this.running) {
+      return;
+    }
+
       this.context.fillStyle = 'white';
       this.context.fillRect(0, 0, this.width, this.height);
 
@@ -80,26 +88,22 @@ export class World {
 
             if (otherGO.collidesWith(gO)) {
               if (otherGO.type === GameObjectType.FOOD) {
-                // if other is food
-                otherGO.dead = true;
-                // gO.grow();
+              (gO as Snake).eat(otherGO as Food);
               }
               if (otherGO.type === GameObjectType.SNAKE) {
-                // if other is snake
                 gO.dead = true;
               }
             }
           });
         }
       });
-    }
 
     if (Math.random() > 0.97) {
       this.addGameObject(new Food(String(foodCount++), Math.random() * this.width, Math.random() * this.height));
     }
 
-    if (this.tickCount % 20 === 0 && this.webSocket.readyState === WebSocket.OPEN) {
-      const wsData: any = this.gameObjects.filter(gO => gO.type === 2).reduce((acc, gO) => ({
+    if (this.tickCount % 20 === 0 && this.webSocket.readyState === WebSocket.OPEN && !this.webSocketAnswerPending) {
+      const wsData: any = this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE).reduce((acc, gO) => ({
         ...acc,
         [gO.id]: {
           energyLevel: (gO as Snake).energyLevel,
@@ -109,6 +113,7 @@ export class World {
         }
       }), {});
       this.webSocket.send(JSON.stringify(wsData));
+      this.webSocketAnswerPending = true;
     }
 
     this.tickCount++;
@@ -145,13 +150,16 @@ export class World {
   }
 
   private onWebSocketMessage(event: any) {
-    console.log(`[WORLD]: received data from websocket:`, event.data);
     const data = JSON.parse(event.data);
-    let destinationGameObject = this.gameObjects.find(gO => gO.id === '0');
+    console.log(`[WORLD]: received data from websocket:`, data);
+    for (let destination in data) {
+      let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
     if (destinationGameObject && destinationGameObject.updateVelocity) {
-      const x = data['a'][0];
-      const y = data['a'][1];
+        const x = data[destinationGameObject.id][0];
+        const y = data[destinationGameObject.id][1];
       destinationGameObject.updateVelocity({ x, y });
     }
+  }
+    this.webSocketAnswerPending = false;
   }
 }
