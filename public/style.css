@@ -10,8 +10,5 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-canvas {
-  outline: 1px solid black;
+  background-color: #161616;
 }
