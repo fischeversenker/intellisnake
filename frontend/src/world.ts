@@ -3,7 +3,7 @@ import { Snake } from "./snake.js";
 import { GameObject, GameObjectType } from "./utils.js";
 import { EPOCH_TIME_MS } from "./main.js";
 
-const AI_CALL_FREQUENCY = 50;
+const AI_CALL_FREQUENCY = 10;
 const DEBUG_FREQUENCY = 7;
 const EPOCH_SNAKE_COUNT = 10;
 
@@ -34,12 +34,16 @@ export class World {
     this.width = canvas.width;
     this.height = canvas.height;
 
+    // add snakes
     for (let i = 0; i < EPOCH_SNAKE_COUNT; i++) {
       this.addSnake();
     }
 
     if (worldCount > 1) {
       this.sendWebSocketMessage('epoch', {});
+      this.running = false;
+    } else {
+      this.begin();
     }
   }
 
@@ -61,6 +65,13 @@ export class World {
 
   update() {
     if (!this.running) {
+      this.context.textAlign = 'center';
+      this.context.globalAlpha = 0.5;
+      this.context.fillStyle = 'white';
+      this.context.fillRect(0, 0, this.width, this.height);
+      this.context.globalAlpha = 1;
+      this.context.fillStyle = 'black';
+      this.context.fillText('PAUSED', this.width / 2, this.height / 2);
       return;
     }
 
@@ -192,6 +203,9 @@ export class World {
     console.log(`[WORLD]: <<< received data of type ${data.type}`);
     switch (data.type) {
       case 'ack':
+        if (!this.running) {
+          this.begin();
+        }
         break;
       case 'error':
         console.log(`[WORLD]: <<< was error: "${data.data}"`);

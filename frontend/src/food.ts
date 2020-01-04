@@ -9,7 +9,7 @@ export class Food implements GameObject {
   velocity: Vector = { x: 0, y: 0 };
   dead = false;
   appearance: number = 0;
-  value = 500;
+  value = 300;
 
   constructor(
     public id: string,

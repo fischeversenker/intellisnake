@@ -30,7 +30,10 @@ let epochCount = 0;
     // webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
     webSocket.onopen = () => startNewWorld();
-    webSocket.onclose = evt => console.log('[MAIN]:', evt);
+    webSocket.onclose = evt => {
+      world.stop();
+      console.log('[MAIN]:', evt);
+    };
 
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r' && !evt.ctrlKey) {
@@ -54,7 +57,6 @@ let epochCount = 0;
 
     const newWorld = makeNewWorld();
     world = newWorld;
-    world.begin();
 
     webSocket.onmessage = (event: MessageEvent) => {
       world.onWebSocketMessage(event);
