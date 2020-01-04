@@ -6,10 +6,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "run-p tsc build:watch serve",
+    "start:dev": "run-p tsc build:watch serve mock-server",
     "tsc": "tsc",
     "serve": "live-server dist",
     "build": "cp -R ./public/* ./dist",
-    "build:watch": "watch \"npm run build\" ./public"
+    "build:watch": "watch \"npm run build\" ./public",
+    "mock-server": "node ./websocket-server.js"
   },
   "keywords": [],
   "author": "",
