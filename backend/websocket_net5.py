@@ -5,12 +5,17 @@ Created on Fri Jan  3 18:46:02 2020
 @author: azach
 """
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 import asyncio
 import websockets
 import nest_asyncio
 import json
+
+# suppress FutuerWarnings from Pandas
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import pandas as pd
 from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten,concatenate,UpSampling2D
 from keras.models import Model,load_model
@@ -23,7 +28,7 @@ from keras.backend.tensorflow_backend import get_session
 import tensorflow
 
 
-FilePath = "C:\\Users\\azach\\Desktop\\intiSnake\\backend\\"
+FilePath = "./"
 #parameters
 len_1d_array = 2500
 
@@ -74,8 +79,8 @@ def createInputs(df,snake):
     #create inputs as numpy arrays
     auxInput =np.asarray([df_subset["energyLevel"].values[0],df_subset["velocityX"].values[0],df_subset["velocityY"].values[0]])
     inputArray =np.asarray(df_subset["matrix"].values[0])
-    
-    
+
+
     return inputArray, auxInput
 
 
@@ -85,7 +90,7 @@ def reshaping(inputArray,auxInput):
     inputArray_ = inputArray.reshape(-1,width, height,levels) #Conv2D accepts 3D array
     auxInput_ = auxInput.reshape(-1,n_auxData)
     return inputArray_,auxInput_
-        
+
 def getTrainData(df):
     '''creates training data for autoencoder'''
     train_x = ([])
@@ -96,15 +101,15 @@ def getTrainData(df):
     return train_x
 
 
-        
+
 def buildModel(width, height, levels,n_auxData):
     ##input placeholder
     #matrix input
     mainInput = Input(shape=(width, height, levels))
     #meta input (Aka energy level, direction, velocity)
     auxiliaryInput = Input(shape=(n_auxData,), name='aux_input')
-    
-    
+
+
     #CNN Network for processing matrix Data
     x= Conv2D(32, (3, 3), padding='same')(mainInput)
     x = MaxPooling2D((2, 2))(x)
@@ -112,36 +117,36 @@ def buildModel(width, height, levels,n_auxData):
     x = MaxPooling2D((2, 2), padding='same')(x)
     x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
     CNNout = Flatten()(x)
-    
-    
+
+
     #combine CNN Output with metaInput
     x = concatenate([CNNout, auxiliaryInput])
-    
+
     #stack a deep densely-connected network on top
     x = Dense(8, activation='relu')(x)
     x = Dense(8, activation='relu')(x)
     x = Dense(4, activation='relu')(x)
     dir_x = Dense(2, activation='relu')(x)
     velocity_x = Dense(2, activation='relu')(x)
-    
-    
+
+
     #define output
     dir_output = Dense(1, activation='tanh', name='dir_output')(velocity_x)
     velocity_output = Dense(1, activation='tanh', name='velocity_output')(dir_x)
-    
+
     model = Model(inputs=[mainInput, auxiliaryInput], outputs=[dir_output, velocity_output])
-    
+
     model.compile(optimizer='rmsprop', loss='binary_crossentropy',
                   loss_weights=[1., 0.2])
     return model
 
-        
+
 def autoencoder(df,width, height, levels,train_x):
     '''creates a autoencoder model, trains it and returns weights from layers'''
     #matrix input
     mainInput = Input(shape=(width, height, levels))
-    
-    
+
+
     #CNN Network for processing matrix Data
     x= Conv2D(32, (3, 3), padding='same')(mainInput)
     x = MaxPooling2D((2, 2))(x)
@@ -149,7 +154,7 @@ def autoencoder(df,width, height, levels,train_x):
     x = MaxPooling2D((2, 2), padding='same')(x)
     x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
     encoded = MaxPooling2D((2, 2), padding='same')(x)
-    
+
     x = Conv2D(8, (3, 3), activation='relu', padding='same')(encoded)
     x = UpSampling2D((2, 2))(x)
     x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
@@ -157,15 +162,15 @@ def autoencoder(df,width, height, levels,train_x):
     x = Conv2D(16, (3, 3), activation='relu')(x)
     x = UpSampling2D((2, 2))(x)
     decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
-    
+
     autoencoder = Model(mainInput, decoded)
     autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-    
+
     autoencoder.fit(train_x,train_x,
                 epochs=50,
                 batch_size=len(df),
                 shuffle=True)
-    
+
     layer0 = autoencoder.layers[0].get_weights()
     layer1 = autoencoder.layers[1].get_weights()
     layer2 = autoencoder.layers[2].get_weights()
@@ -173,7 +178,7 @@ def autoencoder(df,width, height, levels,train_x):
     layer4 = autoencoder.layers[4].get_weights()
     reset_keras(autoencoder)
     return layer0,layer1,layer2,layer3,layer4
-    
+
 def transferWeights(df,layer0,layer1,layer2,layer3,layer4):
     for snake in df["snakeId"]:
         model = load_model('{}{}.h5'.format(FilePath ,snake))
@@ -190,7 +195,7 @@ def mutateWeights(model,mutationRate):
     mutator = np.random.uniform(-(mutationRate),mutationRate)
     #get weights from model
     a = np.array(model.get_weights())         # save weights in a np.array of np.arrays
-    model.set_weights(a + a*mutator) 
+    model.set_weights(a + a*mutator)
     return model
 
 def recreateSnakeNets(snakeList,snakesAliveOld,mutationRate):
@@ -205,9 +210,9 @@ def createSnakeNets(snakeList):
     '''creates snake nets with random weights'''
     for snake in snakeList:
         model = buildModel(width, height, levels,n_auxData)
-        model.save('{}{}.h5'.format(FilePath ,snake))        
+        model.save('{}{}.h5'.format(FilePath ,snake))
         reset_keras(model)
-     
+
 def loadWeights(df):
     models = []
     for snake in df["snakeId"]:
@@ -217,26 +222,26 @@ def loadWeights(df):
         models.append(a)
         #reset_keras(model)
     return dict(zip(df["snakeId"],models))
-    
-  
+
+
 def predSnakeNets(model,weights,inputArray_, auxInput_):
     '''loads snake nets and predicts next movement'''
-    #model = load_model('{}{}.h5'.format(FilePath ,snake))  
+    #model = load_model('{}{}.h5'.format(FilePath ,snake))
     model.set_weights(weights)
     pred = model.predict([inputArray_, auxInput_])
-    
+
     pred_ = [float(pred[1][0,0]),float(pred[0][0,0])]
    # reset_keras(model)
     return pred_
-        
-        
+
+
 def reproduceSnake(parentSnake,childSnake,mutationRate):
      '''copys snake net from parent Snake, mutates it and saves it as a new snake net'''
      model = load_model('{}{}.h5'.format(FilePath ,parentSnake))
      model = mutateWeights(model,mutationRate)
      model.save('{}{}.h5'.format(FilePath ,childSnake))
      reset_keras(model)
-     
+
 
 #create inputs&run pred
 def snakeCommander(df,weightsDict,model):
@@ -249,38 +254,38 @@ def snakeCommander(df,weightsDict,model):
         print("predict snake")
         inputArray, auxInput = createInputs(df,snake)
         inputArray_, auxInput_ = reshaping(inputArray,auxInput)
-        
-        
+
+
         pred_ = predSnakeNets(model,weightsDict[snake],inputArray_, auxInput_)
         metrics.append(auxInput)
         snakes.append(snake)
         preds.append(pred_)
     timestamp2 = time.time()
     print("total runtime for alle snake predictitions")
-    print(timestamp2-timestamp1)   
+    print(timestamp2-timestamp1)
     #store preds in dict
     outputDict = dict(zip(snakes,preds))
-    
+
     outputDf = pd.DataFrame.from_dict(zip(snakes, metrics))
     return outputDict , outputDf
 
 '''
-    to do:    
+    to do:
     def logSnakes():
         return []
-    
+
     def readLogFile():
         return []
-    
+
     def snakeSelector():
-        
+
         #select snake, which consumed the most energy
-        
+
         #select snake, which survived the longest
-        
+
         choosenSnakes = []
         return choosenSnakes
-'''    
+'''
 
 
 
@@ -296,45 +301,44 @@ modelDict = []
 model = []
 
 async def communication(websocket, path):
-    
-    global started, newEpoch, snakesAlive, modelDict , model, FilePath 
-    
-    print("server 192.168.1.146 on Port 8765 is ready and waiting")
+
+    global started, newEpoch, snakesAlive, modelDict , model, FilePath
+
     async for data in websocket:
         #try:
             message = json.loads(data)
             print("Message: {} Type, {} Id, {} len data, started: {}, newEpoch: {}  ".format(message["type"],message["messageId"],len(message["data"]), str(started), str(newEpoch)))
-            
-            
+
+
             if "epoch" == message["type"]:
                 await sendMessage(websocket, message["messageId"], "ack")
                 newEpoch = True
-                
+
             elif "reproduce" == message["type"]:
-                #create new clone of parent 
+                #create new clone of parent
                 #try:
                 parentSnake = message["data"]["parentId"]
                 childSnake = message["data"]["childId"]
                 reproduceSnake(parentSnake,childSnake,mutationRate)
-                #except:  
+                #except:
                  #   await sendMessage(websocket, message["messageId"], "error", data = "reproduce")
-                
+
                 #else:
                 await sendMessage(websocket, message["messageId"], "ack")
-                
+
             elif "snakes" == message["type"]:
-                
+
                 if not started:
                     print("starting...")
-            
-                    df,snakesAlive = df_construct(message["data"]) 
+
+                    df,snakesAlive = df_construct(message["data"])
                     createSnakeNets(df['snakeId'])
                     model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
                     weightsDict = loadWeights(df)
                     await sendMessage(websocket, message["messageId"], "ack", data = {})
                     started = True
-               
-                    
+
+
                     '''
                     to do
                     create train data for autoencoder
@@ -344,22 +348,22 @@ async def communication(websocket, path):
                     transfer weights to nets
                     transferWeights(df,layer0,layer1,layer2,layer3,layer4)
                     '''
-                    
-    
+
+
                 elif started and newEpoch:
                     print("new epoch...")
                     snakesAliveOld = snakesAlive
                     recreateSnakeNets(df['snakeId'],snakesAliveOld,mutationRate)
-                    
+
                     await sendMessage(websocket, message["messageId"], "ack", data = {})
                     newEpoch = False
-                    
+
                 elif started:
                     print("predicting...")
-                    df,snakesAlive = df_construct(message["data"]) 
+                    df,snakesAlive = df_construct(message["data"])
                     output_json,outputDf = snakeCommander(df,weightsDict,model)
                     await sendMessage(websocket, message["messageId"], "snakes", output_json)
-                    
+
                 else:
                     print("error")
                     await sendMessage(websocket, message["messageId"], "error", "unknown type")
@@ -368,16 +372,14 @@ async def communication(websocket, path):
          # print( "Error: %s" % e )
           #raise Exception(e)
 
-            
+
 async def sendMessage(webSocket, messageId, messageType, data = {}):
     print("sending {}".format(messageType))
     message = { "messageId": messageId, "type": messageType, "data": data }
     return await webSocket.send(json.dumps(message))
-            
-start_server = websockets.serve(communication, "192.168.1.146", 8765) #change localhost to ip "192.168.1.146"
 
-try:
-    asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_forever()
-except:
-    exit()
+start_server = websockets.serve(communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
+
+asyncio.get_event_loop().run_until_complete(start_server)
+print("server running...")
+asyncio.get_event_loop().run_forever()
