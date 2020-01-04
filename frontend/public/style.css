@@ -6,14 +6,18 @@ body, html {
 }
 
 body {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  justify-content: center;
+  align-content: center;
+  justify-items: center;
   background-color: #161616;
 }
 
-pre {
+.debug {
   color: white;
   font-family: sans-serif;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }

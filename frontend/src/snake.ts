@@ -1,15 +1,15 @@
-import { GameObject, Vector, GameObjectType } from "./world.js";
 import { Food } from "./food.js";
+import { GameObject, GameObjectType, Vector } from "./utils.js";
 
-export const SNAKE_LENGTH = 40;
+export const SNAKE_LENGTH = 50;
 
 export class Snake implements GameObject {
 
   type = GameObjectType.SNAKE;
   size = 3;
-  velocity: { x: number, y: number } = { x: 1, y: 1 };
+  velocity: Vector = { x: 1, y: 1 };
 
-  energyLevel = 5000;
+  energyLevel = 2500;
   dead: boolean = false;
 
   tail: any[] = [];
@@ -21,8 +21,8 @@ export class Snake implements GameObject {
     public canvasWidth: number,
     public canvasHeight: number,
   ) {
-    this.velocity.x = (Math.random() - 0.5);
-    this.velocity.y = (Math.random() - 0.5);
+    this.velocity.x = 0;
+    this.velocity.y = 0;
   }
 
   updateVelocity(newVelocity: Vector): void {
@@ -38,8 +38,8 @@ export class Snake implements GameObject {
       return;
     }
 
-    this.x += this.velocity.x;
-    this.y += this.velocity.y;
+    this.x += this.velocity.x * 0.3;
+    this.y += this.velocity.y * 0.3;
 
     if (this.x < 0) {
       this.x = this.canvasWidth;
@@ -60,7 +60,7 @@ export class Snake implements GameObject {
 
     this.tail.unshift({ x: this.x, y: this.y });
     this.energyLevel--;
-    this.energyLevel -= this.velocityMagnitude / 2;
+    this.energyLevel -= (1 / 2) * /* mass */ 1 * (this.velocityMagnitude * 1);
   }
 
   draw(context: CanvasRenderingContext2D): void {
@@ -76,7 +76,9 @@ export class Snake implements GameObject {
     this.drawCircle(context, this.x, this.y, color, this.size);
 
     context.fillStyle = 'black';
-    context.fillText(`Id: ${this.id}, Energy: ${Math.round(this.energyLevel)}`, this.x + this.size, this.y);
+    context.font = '8px Arial';
+    context.fillText(`Id: ${this.id}`, this.x + this.size, this.y);
+    context.fillText(`E: ${Math.round(this.energyLevel)}`, this.x + this.size, this.y + 8);
   }
 
   collidesWith(position: Vector): boolean {

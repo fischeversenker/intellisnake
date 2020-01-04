@@ -1,14 +1,18 @@
 import { World } from "./world.js";
 import { Snake } from "./snake.js";
 
-export const CANVAS_WIDTH = 50;
-export const CANVAS_HEIGHT = 50;
+export const CANVAS_WIDTH = 100;
+export const CANVAS_HEIGHT = 100;
+export const EPOCH_TIME_MS = 90 * 1000;
+
+let canvas: HTMLCanvasElement;
+let context: CanvasRenderingContext2D;
+let world: World;
+let debuggerElement: HTMLDivElement;
+let webSocket: WebSocket;
+let epochCount = 0;
 
 (function() {
-  let canvas: HTMLCanvasElement;
-  let context: CanvasRenderingContext2D;
-  let world: World;
-  let debuggerElement: HTMLPreElement;
 
   document.addEventListener('DOMContentLoaded', () => {
 
@@ -16,23 +20,21 @@ export const CANVAS_HEIGHT = 50;
     context = canvas.getContext('2d') as CanvasRenderingContext2D;
     document.body.appendChild(canvas);
 
-    debuggerElement = document.createElement('pre');
+    debuggerElement = document.createElement('div');
+    debuggerElement.classList.add('debug');
     document.body.appendChild(debuggerElement);
 
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    const webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
+    webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
     // const webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
     webSocket.onopen = () => {
       webSocket.send('start');
       webSocket.onmessage = (event: MessageEvent) => {
-        if (event.data === 'ack') {
-          world = newWorld(webSocket);
-          world.begin();
-        } else {
-          world.onWebSocketMessage(event);
+        if (event.data === 'ack' && !world) {
+          startNewWorld();
         }
       };
     }
@@ -40,7 +42,7 @@ export const CANVAS_HEIGHT = 50;
 
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r') {
-        world = newWorld(webSocket);
+        startNewWorld();
       }
 
       if (evt.key === 'p') {
@@ -53,18 +55,36 @@ export const CANVAS_HEIGHT = 50;
     });
   });
 
-  function newWorld(ws: WebSocket): World {
-    world = new World(canvas, context, ws, debuggerElement);
+  function startNewWorld() {
+    if (world) {
+      world.destroy();
+    }
 
-    const snake1 = new Snake('0', Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT);
-    const snake2 = new Snake('1', Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT);
-    const snake3 = new Snake('2', Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT);
+    const newWorld = makeNewWorld();
+    world = newWorld;
+    world.begin();
 
-    world.addGameObject(snake1);
-    world.addGameObject(snake2);
-    world.addGameObject(snake3);
+    webSocket.onmessage = (event: MessageEvent) => {
+      world.onWebSocketMessage(event);
+    };
 
-    return world;
+    // make sure this epoch ends after EPOCH_TIME_MS passed
+    setTimeout(() => {
+      if (world === newWorld) {
+        onFinish();
+      }
+    }, EPOCH_TIME_MS);
+  }
+
+  function makeNewWorld(): World {
+    return new World(canvas, context, webSocket, debuggerElement, () => onFinish(), epochCount);
+  }
+
+  function onFinish() {
+    epochCount++;
+    setTimeout(() => {
+      startNewWorld();
+    }, 300);
   }
 
 })();

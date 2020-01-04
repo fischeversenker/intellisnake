@@ -1,64 +1,52 @@
 import { Food } from "./food.js";
 import { Snake } from "./snake.js";
-
-export enum GameObjectType {
-  'NONE' = 0,
-  'FOOD' = 1,
-  'SNAKE' = 2,
-  'ME' = 3,
-};
-
-export interface GameObject {
-  type: GameObjectType;
-  id: string;
-  x: number;
-  y: number;
-  size: number;
-  velocity: Vector;
-  dead: boolean;
-  updateVelocity?: (velocity: Vector) => void;
-  update: () => void;
-  draw: (context: CanvasRenderingContext2D) => void;
-  collidesWith: (position: Vector) => boolean;
-}
-
-export interface WorldDataObject {
-  [key: string]: {
-    energyLevel: number;
-    matrix: number[];
-    velocity: Vector;
-  }
-}
-
-export type Vector = {
-  x: number;
-  y: number
-}
-
-let foodCount = 0;
+import { GameObject, GameObjectType } from "./utils.js";
+import { EPOCH_TIME_MS } from "./main.js";
 
 const AI_CALL_FREQUENCY = 50;
-const DEBUG_FREQUENCY = 10;
+const DEBUG_FREQUENCY = 7;
+
+let foodCount = 0;
+let worldCount = 0;
 
 export class World {
 
   running: boolean = false;
   width: number;
   height: number;
-  private webSocketAnswerPending = false;
-  private webSocketStartingPhase = true;
 
+  public id = worldCount++;
+  private pendingWebSocketRequests = 0;
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
+  private appearance = Date.now();
 
   constructor(
     public canvas: HTMLCanvasElement,
     public context: CanvasRenderingContext2D,
     private webSocket: WebSocket,
-    private debug: HTMLPreElement,
+    private debug: HTMLDivElement,
+    private onFinish: Function,
+    private epochCount: number = 0,
   ) {
     this.width = canvas.width;
     this.height = canvas.height;
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+    this.addSnake();
+
+    if (worldCount > 1) {
+      this.webSocket.send('epoch');
+      this.pendingWebSocketRequests++;
+      console.log('new epoch started');
+    }
   }
 
   begin() {
@@ -72,9 +60,18 @@ export class World {
     this.running = false;
   }
 
+  destroy() {
+    this.stop();
+    this.gameObjects = [];
+  }
+
   update() {
     if (!this.running) {
       return;
+    }
+
+    if (this.snakes.length === 0) {
+      return this.onFinish();
     }
 
     this.context.fillStyle = 'white';
@@ -100,6 +97,15 @@ export class World {
             }
           }
         });
+
+        // check if reproduces
+        if ((gO as Snake).energyLevel > 4000) {
+          const newSnake = this.addSnake();
+          this.webSocket.send(`reproduce:${gO.id}:${newSnake.id}`);
+          this.pendingWebSocketRequests++;
+          newSnake.energyLevel = Math.floor((gO as Snake).energyLevel / 2);
+          (gO as Snake).energyLevel = Math.floor((gO as Snake).energyLevel / 2);
+        }
       }
 
       if (gO.dead) {
@@ -109,12 +115,12 @@ export class World {
 
     this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
 
-    if (Math.random() > 0.97) {
+    if (Math.random() > 0.96) {
       this.addGameObject(new Food(String(foodCount++), Math.random() * this.width, Math.random() * this.height));
     }
 
-    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && !this.webSocketAnswerPending) {
-      const wsData: any = this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE).reduce((acc, gO) => ({
+    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests <= 0) {
+      const wsData: any = this.snakes.reduce((acc, gO) => ({
         ...acc,
         [gO.id]: {
           energyLevel: (gO as Snake).energyLevel,
@@ -124,11 +130,22 @@ export class World {
         }
       }), {});
       this.webSocket.send(JSON.stringify(wsData));
-      this.webSocketAnswerPending = true;
+      this.pendingWebSocketRequests++;
     }
 
     if (this.tickCount % DEBUG_FREQUENCY === 0) {
-      this.debug.innerHTML = JSON.stringify(this.gameObjects.length, null, 2);
+      const maxSnake = this.gameObjects.reduce((acc: any, gO) => {
+        if (!acc || (gO as Snake).energyLevel > acc.energyLevel) {
+          return gO;
+        } else {
+          return acc;
+        }
+      }, null);
+      this.debug.innerHTML = `
+<div>Epoch:</div><div>${this.epochCount}</div>
+<div>Snakes:</div><div>${this.snakes.length}</div>
+<div>Max EL:</div><div>${String(Math.floor(maxSnake.energyLevel))} (${maxSnake.id})</div>
+<div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - this.appearance)) / 1000)}s</div>`;
     }
 
     this.tickCount++;
@@ -164,7 +181,15 @@ export class World {
     return result;
   }
 
-  onWebSocketMessage(event: any) {
+  get snakes(): Snake[] {
+    return this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE) as Snake[];
+  }
+
+  onWebSocketMessage(event: any): void {
+    if (event.data === 'ack') {
+      this.pendingWebSocketRequests--;
+      return;
+    }
     const data = JSON.parse(event.data);
     console.log(`[WORLD]: received data from websocket:`, data);
     for (let destination in data) {
@@ -175,6 +200,12 @@ export class World {
         destinationGameObject.updateVelocity({ x, y });
       }
     }
-    this.webSocketAnswerPending = false;
+    this.pendingWebSocketRequests--;
+  }
+
+  private addSnake(): Snake {
+    const newSnake = new Snake(String(this.snakes.length), Math.random() * this.width, Math.random() * this.height, this.width, this.height);
+    this.gameObjects.push(newSnake);
+    return newSnake;
   }
 }

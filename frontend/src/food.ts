@@ -1,6 +1,6 @@
-import { GameObject, Vector, GameObjectType } from "./world.js";
+import { GameObject, GameObjectType, Vector } from "./utils.js";
 
-const MAX_FOOD_AGE = 5 * 1000;
+const MAX_FOOD_AGE = 10 * 1000;
 
 export class Food implements GameObject {
 
@@ -9,7 +9,7 @@ export class Food implements GameObject {
   velocity: Vector = { x: 0, y: 0 };
   dead = false;
   appearance: number = 0;
-  value = 200;
+  value = 100;
 
   constructor(
     public id: string,
