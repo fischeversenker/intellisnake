@@ -29,15 +29,7 @@ let epochCount = 0;
     webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
     // webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
-    webSocket.onopen = () => {
-      webSocket.send(JSON.stringify({ messageId: -1, type: 'start', data: {} }));
-      webSocket.onmessage = (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'ack' && !world) {
-          startNewWorld();
-        }
-      };
-    }
+    webSocket.onopen = () => startNewWorld();
     webSocket.onclose = evt => console.log('[MAIN]:', evt);
 
     document.addEventListener('keydown', (evt) => {

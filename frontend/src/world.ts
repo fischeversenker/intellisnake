@@ -198,6 +198,9 @@ export class World {
     switch (data.type) {
       case 'ack':
         break;
+      case 'error':
+        console.log(`[WORLD]: <<< was error: "${data.data}"`);
+        break;
       default:
         for (let destination in data.data) {
           let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
