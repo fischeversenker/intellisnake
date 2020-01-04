@@ -12,7 +12,6 @@ import json
 import pandas as pd
 from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten,concatenate,UpSampling2D
 from keras.models import Model,load_model
-from keras.utils import plot_model
 import numpy as np
 import time
 import gc
@@ -58,7 +57,7 @@ def reset_keras(model):
 
 def df_construct(data):
     '''reads data from websocket and creates a dataframe'''
-    df = pd.DataFrame.from_dict(json.loads(data)).T
+    df = pd.DataFrame.from_dict(data).T
     df['snakeId'] = df.index
     df['snakeId'] = df['snakeId'].astype(str)
     snakesAlive = df['snakeId'].unique()
@@ -225,6 +224,7 @@ def reproduceSnake(parentSnake,childSnake,mutationRate):
 
 #create inputs&run pred
 def snakeCommander(df):
+    '''basic functions to control snakes'''
     snakes = []
     preds = []
     runtimesPred = []
@@ -246,100 +246,138 @@ def snakeCommander(df):
         runtimesPred.append((timestampPred2-timestampPred1))
         snakes.append(snake)
         preds.append(pred_)
+        
     #store preds in dict
     outputDict = dict(zip(snakes,preds))
     output_json = json.dumps(outputDict)
-    greeting = f"{output_json}"
-    print("sending output")
-    return greeting
+  
+    return output_json 
+
+'''
+    to do:    
+    def logSnakes():
+        return []
     
+    def readLogFile():
+        return []
     
+    def snakeSelector():
+        
+        #select snake, which consumed the most energy
+        
+        #select snake, which survived the longest
+        
+        choosenSnakes = []
+        return choosenSnakes
+'''    
+
+
 
 
 #function to get asyncio running in spyder
 nest_asyncio.apply()
 
+#variables
+started = False
+newEpoch = True
+snakesAlive = []
+
 async def communication(websocket, path):
     
+    global started, newEpoch, snakesAlive
+    
     print("server 192.168.1.146 on Port 8765 is ready and waiting")
-    #flush()
     async for data in websocket:
-        #data = await websocket.recv()
+        
+        message = json.loads(data)
+        print(message)
         
         
-        if data == "start":
-            
-            greeting = f"ack"
-            await websocket.send(greeting)
+        if "epoch" == message["type"]:
+            await sendMessage(websocket, message["messageId"], "ack")
             print("sending ack")
+            newEpoch = True
             
-            
-            data = await websocket.recv()
-            
-            
-            #create dataframe
-            print("First Data incoming")
-            
-                
-            df,snakesAlive = df_construct(data) 
-            
-            
-            #create new nets if needed at first run
-            print("create new nets")
-            createSnakeNets(df['snakeId'])
-            
-            
-            #create train data for autoencoder
-            train_x = getTrainData(df)
-            #train autoencoder
-            layer0,layer1,layer2,layer3,layer4 =autoencoder(df,width, height, levels,train_x)
-            #transfer weights to nets
-            transferWeights(df,layer0,layer1,layer2,layer3,layer4)
-            
-            greeting = snakeCommander(df)
-            await websocket.send(greeting)
-       
-        if data == "epoch": 
-            greeting = f"ack"
-            await websocket.send(greeting)
-            print("sending ack")
-            
-            
-            data = await websocket.recv()
-            #file = open("{}{}".format(path,"alive.csv"))
-            #snakesAliveOld = np.loadtxt(file, delimiter=",")
-            #del file
-            snakesAliveOld = snakesAlive
-            print(snakesAliveOld)
-            df,snakesAlive = df_construct(data) 
-            print("recreate old nets")
-            recreateSnakeNets(df['snakeId'],snakesAliveOld)
-            greeting = snakeCommander(df)
-            await websocket.send(greeting)
-           
-        if "reproduce" in data:
+        elif "reproduce" == message["type"]:
             #create new clone of parent 
-            parentSnake = data.split(":")[1]
-            childSnake = data.split(":")[2]
-            reproduceSnake(parentSnake,childSnake)
-            greeting = f"ack"
-            await websocket.send(greeting)
+            try:
+                parentSnake = message["data"]["parentId"]
+                childSnake = message["data"]["childId"]
+                reproduceSnake(parentSnake,childSnake)
+            except:  
+                await sendMessage(websocket, message["messageId"], "error", data = "reproduce")
+            else:
+                await sendMessage(websocket, message["messageId"], "ack")
             print("sending ack")
-        
-        else:     
-            #create dataframe
-            print("further Data incoming")
-            df,snakesAlive = df_construct(data) 
             
-            greeting = snakeCommander(df)
-            await websocket.send(greeting) 
-          
-            #file = open("{}{}".format(path,"alive.csv"))
-            #np.savetxt(file, snakesAlive, delimiter=",")
-            #del file
-     
+        elif "snakes" == message["type"]:
             
-start_server = websockets.serve(communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
+            if not started:
+            
+                #create dataframe
+                print("First Data incoming")
+                #create new nets if needed at first run
+                print("create new nets")
+                try:
+                    df,snakesAlive = df_construct(message["data"]) 
+                    createSnakeNets(df['snakeId'])
+                except: 
+                    await sendMessage(websocket, message["messageId"], "error", data = "create nets")
+                else:
+                
+                    '''
+                    to do
+                    create train data for autoencoder
+                    train_x = getTrainData(df)
+                    train autoencoder
+                    layer0,layer1,layer2,layer3,layer4 =autoencoder(df,width, height, levels,train_x)
+                    transfer weights to nets
+                    transferWeights(df,layer0,layer1,layer2,layer3,layer4)
+                    '''
+                    try:
+                        output_json = snakeCommander(df)
+                    except:
+                        await sendMessage(websocket, message["messageId"], "error", data = "snakeCommander")
+                    else:
+                        await sendMessage(websocket, message["messageId"], "snakes", output_json)
+                        started = True
+
+            elif started and newEpoch:    
+                data = await websocket.recv()
+                snakesAliveOld = snakesAlive
+                print("recreate old nets")
+                recreateSnakeNets(df['snakeId'],snakesAliveOld)
+                try:
+                    print(snakesAliveOld)
+                    df,snakesAlive = df_construct(data) 
+                    output_json = snakeCommander(df)
+                except:
+                    await sendMessage(websocket, message["messageId"], "error", data = "snakeCommander")
+                else:
+                    await sendMessage(websocket, message["messageId"], "snakes", output_json)
+                    newEpoch = False
+                
+            elif started:
+                #create dataframe
+                
+                try:
+                    print("further Data incoming")
+                    df,snakesAlive = df_construct(message["data"]) 
+                    output_json = snakeCommander(df)
+                except:
+                    await sendMessage(websocket, message["messageId"], "error", data = "snakeCommander")
+                else:
+                    await sendMessage(websocket, message["messageId"], "snakes", output_json)
+            
+        else:
+            await sendMessage(websocket, message["messageId"], "error", "unknown type")
+
+            
+async def sendMessage(webSocket, messageId, messageType, data = {}):
+    message = { "messageId": messageId, "type": messageType, "data": data }
+    return await webSocket.send(json.dumps(message))
+            
+start_server = websockets.serve(communication, "192.168.1.146", 8765) #change localhost to ip "192.168.1.146"
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
