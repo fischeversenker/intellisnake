@@ -8,6 +8,7 @@ const DEBUG_FREQUENCY = 7;
 
 let foodCount = 0;
 let worldCount = 0;
+let messageCount = 0;
 
 export class World {
 
@@ -16,7 +17,7 @@ export class World {
   height: number;
 
   public id = worldCount++;
-  private pendingWebSocketRequests = 0;
+  private pendingWebSocketRequests: number[] = [];
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
   private appearance = Date.now();
@@ -43,9 +44,7 @@ export class World {
     this.addSnake();
 
     if (worldCount > 1) {
-      this.webSocket.send('epoch');
-      this.pendingWebSocketRequests++;
-      console.log('new epoch started');
+      this.sendWebSocketMessage('epoch', {});
     }
   }
 
@@ -101,8 +100,7 @@ export class World {
         // check if reproduces
         if ((gO as Snake).energyLevel > 4000) {
           const newSnake = this.addSnake();
-          this.webSocket.send(`reproduce:${gO.id}:${newSnake.id}`);
-          this.pendingWebSocketRequests++;
+          this.sendWebSocketMessage('reproduce', { parentId: gO.id, childId: newSnake.id });
           newSnake.energyLevel = Math.floor((gO as Snake).energyLevel / 2);
           (gO as Snake).energyLevel = Math.floor((gO as Snake).energyLevel / 2);
         }
@@ -119,7 +117,7 @@ export class World {
       this.addGameObject(new Food(String(foodCount++), Math.random() * this.width, Math.random() * this.height));
     }
 
-    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests <= 0) {
+    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {
       const wsData: any = this.snakes.reduce((acc, gO) => ({
         ...acc,
         [gO.id]: {
@@ -129,8 +127,7 @@ export class World {
           velocityY: gO.velocity.y,
         }
       }), {});
-      this.webSocket.send(JSON.stringify(wsData));
-      this.pendingWebSocketRequests++;
+      this.sendWebSocketMessage('snakes', wsData);
     }
 
     if (this.tickCount % DEBUG_FREQUENCY === 0) {
@@ -185,22 +182,34 @@ export class World {
     return this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE) as Snake[];
   }
 
+  sendWebSocketMessage(type: string, data: any): void {
+    console.log(`[WORLD]: >>> sending data of type ${type}`);
+    this.webSocket.send(JSON.stringify({
+      messageId: messageCount,
+      type,
+      data,
+    }));
+    this.pendingWebSocketRequests.push(messageCount++);
+  }
+
   onWebSocketMessage(event: any): void {
-    if (event.data === 'ack') {
-      this.pendingWebSocketRequests--;
-      return;
-    }
     const data = JSON.parse(event.data);
-    console.log(`[WORLD]: received data from websocket:`, data);
-    for (let destination in data) {
-      let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
-      if (destinationGameObject && destinationGameObject.updateVelocity) {
-        const x = data[destinationGameObject.id][0];
-        const y = data[destinationGameObject.id][1];
-        destinationGameObject.updateVelocity({ x, y });
-      }
+    console.log(`[WORLD]: <<< received data of type ${data.type}`);
+    switch (data.type) {
+      case 'ack':
+        break;
+      default:
+        for (let destination in data.data) {
+          let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
+          if (destinationGameObject && destinationGameObject.updateVelocity) {
+            const x = data.data[destinationGameObject.id][0];
+            const y = data.data[destinationGameObject.id][1];
+            destinationGameObject.updateVelocity({ x, y });
+          }
+        }
+        break;
     }
-    this.pendingWebSocketRequests--;
+    this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== data.messageId);
   }
 
   private addSnake(): Snake {

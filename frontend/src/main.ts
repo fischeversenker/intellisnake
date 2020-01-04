@@ -27,13 +27,14 @@ let epochCount = 0;
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
-    // const webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
+    // webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
+    webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
     webSocket.onopen = () => {
-      webSocket.send('start');
+      webSocket.send(JSON.stringify({ messageId: -1, type: 'start', data: {} }));
       webSocket.onmessage = (event: MessageEvent) => {
-        if (event.data === 'ack' && !world) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'ack' && !world) {
           startNewWorld();
         }
       };
@@ -41,7 +42,7 @@ let epochCount = 0;
     webSocket.onclose = evt => console.log('[MAIN]:', evt);
 
     document.addEventListener('keydown', (evt) => {
-      if (evt.key === 'r') {
+      if (evt.key === 'r' && !evt.ctrlKey) {
         startNewWorld();
       }
 
