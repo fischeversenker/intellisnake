@@ -1,5 +1,4 @@
 import { World } from "./world.js";
-import { Snake } from "./snake.js";
 
 export const CANVAS_WIDTH = 100;
 export const CANVAS_HEIGHT = 100;
@@ -27,8 +26,8 @@ let epochCount = 0;
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    // webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
-    webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
+    webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
+    // webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
     webSocket.onopen = () => {
       webSocket.send(JSON.stringify({ messageId: -1, type: 'start', data: {} }));
@@ -89,16 +88,3 @@ let epochCount = 0;
   }
 
 })();
-
-/**
- * Current status:
- *
- * we get a connection to the websocket server and send - as a test - the initial bitMatrix as JSON to the PY server.
- * Succesfully
- *
- * Next steps:
- * - figure out data schema to send bitmap and snake ids (maybe replace pixels for specific snake with the snakes id)
- *  -- --> one BitMatrix per Snake -> only one snake in the matrix has the distinct ME-color so this is the one that the ID refers to
- * - send snake data on every animationFrame
- * - update snakes' acceleration based on ws messages
- */
