@@ -6,7 +6,7 @@ Created on Fri Jan  3 18:46:02 2020
 """
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-
+import sys
 import asyncio
 import websockets
 import nest_asyncio
@@ -74,6 +74,8 @@ def createInputs(df,snake):
     #create inputs as numpy arrays
     auxInput =np.asarray([df_subset["energyLevel"].values[0],df_subset["velocityX"].values[0],df_subset["velocityY"].values[0]])
     inputArray =np.asarray(df_subset["matrix"].values[0])
+    
+    
     return inputArray, auxInput
 
 
@@ -194,7 +196,6 @@ def mutateWeights(model,mutationRate):
 def recreateSnakeNets(snakeList,snakesAliveOld,mutationRate):
     '''for new epoch: loads historic snake Nets'''
     for snake in snakeList:
-        snake = 1
         model = load_model('{}{}.h5'.format(path,str(np.random.choice(snakesAliveOld,1)[0])[0] ) )
         model = mutateWeights(model,mutationRate)
         model.save('{}{}.h5'.format(path,snake))
@@ -207,12 +208,23 @@ def createSnakeNets(snakeList):
         model.save('{}{}.h5'.format(path,snake))        
         reset_keras(model)
      
-def predSnakeNets(snake,inputArray_, auxInput_):
+def loadModels(df):
+    models = []
+    for snake in df["snakeId"]:
+        model = load_model('{}{}.h5'.format(path,snake))
+        #model._make_predict_function()
+        models.append(model)
+        #reset_keras(model)
+    return dict(zip(df["snakeId"],models))
+    
+  
+def predSnakeNets(model,snake,inputArray_, auxInput_):
     '''loads snake nets and predicts next movement'''
-    model = load_model('{}{}.h5'.format(path,snake))
+    #model = load_model('{}{}.h5'.format(path,snake))  
     pred = model.predict([inputArray_, auxInput_])
+    
     pred_ = [float(pred[1][0,0]),float(pred[0][0,0])]
-    reset_keras(model)
+   # reset_keras(model)
     return pred_
         
         
@@ -225,26 +237,30 @@ def reproduceSnake(parentSnake,childSnake,mutationRate):
      
 
 #create inputs&run pred
-def snakeCommander(df):
+def snakeCommander(df,modelDict):
     '''basic functions to control snakes'''
     snakes = []
     preds = []
-    runtimesPred = []
+    metrics  = []
+    timestamp1 = time.time()
     for snake in df['snakeId']:
-       
+        print("predict snake")
         inputArray, auxInput = createInputs(df,snake)
         inputArray_, auxInput_ = reshaping(inputArray,auxInput)
         
         
-        pred_ = predSnakeNets(snake,inputArray_, auxInput_)
-        timestampPred2 = time.time()
+        pred_ = predSnakeNets(modelDict[snake],snake,inputArray_, auxInput_)
+        metrics.append(auxInput)
         snakes.append(snake)
         preds.append(pred_)
-        
+    timestamp2 = time.time()
+    print("total runtime for alle snake predictitions")
+    print(timestamp2-timestamp1)   
     #store preds in dict
     outputDict = dict(zip(snakes,preds))
-  
-    return outputDict 
+    
+    outputDf = pd.DataFrame.from_dict(zip(snakes, metrics))
+    return outputDict , outputDf
 
 '''
     to do:    
@@ -274,50 +290,46 @@ nest_asyncio.apply()
 started = False
 newEpoch = True
 snakesAlive = []
-
+modelDict = []
 async def communication(websocket, path):
     
-    global started, newEpoch, snakesAlive
+    global started, newEpoch, snakesAlive, modelDict 
     
     print("server 192.168.1.146 on Port 8765 is ready and waiting")
     async for data in websocket:
-        
-        message = json.loads(data)
-        print("Message: {} Type, {} Id, {} len data, started: {}, newEpoch: {}  ".format(message["type"],message["messageId"],len(message["data"]), str(started), str(newEpoch)))
-        
-        
-        if "epoch" == message["type"]:
-            await sendMessage(websocket, message["messageId"], "ack")
-            print("sending ack")
-            newEpoch = True
+        #try:
+            message = json.loads(data)
+            print("Message: {} Type, {} Id, {} len data, started: {}, newEpoch: {}  ".format(message["type"],message["messageId"],len(message["data"]), str(started), str(newEpoch)))
             
-        elif "reproduce" == message["type"]:
-            #create new clone of parent 
-            try:
+            
+            if "epoch" == message["type"]:
+                await sendMessage(websocket, message["messageId"], "ack")
+                newEpoch = True
+                
+            elif "reproduce" == message["type"]:
+                #create new clone of parent 
+                #try:
                 parentSnake = message["data"]["parentId"]
                 childSnake = message["data"]["childId"]
-                reproduceSnake(parentSnake,childSnake)
-            except:  
-                await sendMessage(websocket, message["messageId"], "error", data = "reproduce")
-            else:
+                reproduceSnake(parentSnake,childSnake,mutationRate)
+                #except:  
+                 #   await sendMessage(websocket, message["messageId"], "error", data = "reproduce")
+                
+                #else:
                 await sendMessage(websocket, message["messageId"], "ack")
-            print("sending ack")
+                
+            elif "snakes" == message["type"]:
+                
+                if not started:
+                    print("starting...")
             
-        elif "snakes" == message["type"]:
-            
-            if not started:
-            
-                #create dataframe
-                print("First Data incoming")
-                #create new nets if needed at first run
-                print("create new nets")
-                try:
                     df,snakesAlive = df_construct(message["data"]) 
                     createSnakeNets(df['snakeId'])
-                except: 
-                    await sendMessage(websocket, message["messageId"], "error", data = "create nets")
-                else:
-                
+                    modelDict = loadModels(df)
+                    await sendMessage(websocket, message["messageId"], "ack", data = {})
+                    started = True
+               
+                    
                     '''
                     to do
                     create train data for autoencoder
@@ -327,54 +339,40 @@ async def communication(websocket, path):
                     transfer weights to nets
                     transferWeights(df,layer0,layer1,layer2,layer3,layer4)
                     '''
-                    try:
-                        output_json = snakeCommander(df)
-                    except:
-                        await sendMessage(websocket, message["messageId"], "error", data = "snakeCommander")
-                    else:
-                        await sendMessage(websocket, message["messageId"], "snakes", output_json)
-                        started = True
-
-            elif started and newEpoch:    
-                snakesAliveOld = snakesAlive
-                print("recreate old nets")
-                recreateSnakeNets(df['snakeId'],snakesAliveOld,mutationRate)
-                try:
-                    print(snakesAliveOld)
-                    df,snakesAlive = df_construct(message["data"]) 
-                    print(df)
-                    print(snakesAlive)
-                    output_json = snakeCommander(df)
-                    print(output_json)
-                except:
-                    await sendMessage(websocket, message["messageId"], "error", data = "snakeCommander")
-                else:
-                    await sendMessage(websocket, message["messageId"], "snakes", output_json)
-                    newEpoch = False
-                
-            elif started:
-                #create dataframe
-                
-                try:
                     
+    
+                elif started and newEpoch:
+                    print("new epoch...")
+                    snakesAliveOld = snakesAlive
+                    recreateSnakeNets(df['snakeId'],snakesAliveOld,mutationRate)
+                    
+                    await sendMessage(websocket, message["messageId"], "ack", data = {})
+                    newEpoch = False
+                    
+                elif started:
+                    print("predicting...")
                     df,snakesAlive = df_construct(message["data"]) 
-                    output_json = snakeCommander(df)
-                except:
-                    await sendMessage(websocket, message["messageId"], "error", data = "snakeCommander")
-                else:
+                    output_json,outputDf = snakeCommander(df,modelDict)
                     await sendMessage(websocket, message["messageId"], "snakes", output_json)
-            
-        else:
-            await sendMessage(websocket, message["messageId"], "error", "unknown type")
+                    
+                else:
+                    print("error")
+                    await sendMessage(websocket, message["messageId"], "error", "unknown type")
+       # except: # catch *all* exceptions
+        #  e = sys.exc_info()[0]
+         # print( "Error: %s" % e )
+          #raise Exception(e)
 
             
 async def sendMessage(webSocket, messageId, messageType, data = {}):
+    print("sending {}".format(messageType))
     message = { "messageId": messageId, "type": messageType, "data": data }
     return await webSocket.send(json.dumps(message))
             
 start_server = websockets.serve(communication, "192.168.1.146", 8765) #change localhost to ip "192.168.1.146"
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
-    
-    
+try:
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
+except:
+    exit()
