@@ -2,7 +2,7 @@ import { World } from "./world.js";
 
 export const CANVAS_WIDTH = 100;
 export const CANVAS_HEIGHT = 100;
-export const EPOCH_TIME_MS = 90 * 1000;
+export const EPOCH_TIME_MS = 30 * 1000;
 
 let canvas: HTMLCanvasElement;
 let context: CanvasRenderingContext2D;
@@ -26,8 +26,8 @@ let epochCount = 0;
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
-    // webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
+    // webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
+    webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
     webSocket.onopen = () => startNewWorld();
     webSocket.onclose = evt => {

@@ -119,8 +119,8 @@ export class World {
 
     this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
 
-    if (Math.random() > 0.97) {
-      this.addGameObject(new Food(String(foodCount++), Math.random() * this.width, Math.random() * this.height));
+    if (Math.random() > 0.99) {
+      this.addGameObject(new Food(String(foodCount++), Math.abs((Math.random()-0.5)) * this.width, Math.abs((Math.random()-0.5)) * this.height));
     }
 
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {

@@ -1,6 +1,6 @@
 import { GameObject, GameObjectType, Vector } from "./utils.js";
 
-const MAX_FOOD_AGE = 10 * 1000;
+const MAX_FOOD_AGE = 30 * 1000;
 
 export class Food implements GameObject {
 

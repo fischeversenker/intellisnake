@@ -166,19 +166,20 @@ def transferWeights(df,layer0,layer1,layer2,layer3,layer4):
         model.layers[4].set_weights(layer4)
         model.save('{}{}.h5'.format(FilePath ,snake))
 
-def mutateWeights(model,mutationRate):
+def mutateWeights(model,weights,mutationRate):
     #mutation rate
     mutator = np.random.uniform(-(mutationRate),mutationRate)
-    #get weights from model
-    a = np.array(model.get_weights())         # save weights in a np.array of np.arrays
-    model.set_weights(a + a*mutator)
+    model.set_weights(weights + mutator*weights)
     return model
 
-def recreateSnakeNets(snakeList,snakesAliveOld,mutationRate):
+def recreateSnakeNets(model,snakeList,weightsDict,snakesAliveOld,mutationRate):
     '''for new epoch: loads historic snake Nets'''
+    
+    dict((k, weightsDict[k]) for k in snakesAliveOld if k in weightsDict)
     for snake in snakeList:
-        model = load_model('{}{}.h5'.format(FilePath ,str(np.random.choice(snakesAliveOld,1)[0])[0] ) )
-        model = mutateWeights(model,mutationRate)
+        x = str(np.random.choice(snakesAliveOld,1)[0])[0] 
+        weights = weightsDict[x]
+        model = mutateWeights(model,weights,mutationRate)
         model.save('{}{}.h5'.format(FilePath ,snake))
 
 def createSnakeNets(snakeList):
@@ -207,10 +208,10 @@ def predSnakeNets(model,weights,inputArray_, auxInput_):
     return pred_
 
 
-def reproduceSnake(parentSnake,childSnake,mutationRate):
+def reproduceSnake(model,weightsDict,parentSnake,childSnake,mutationRate):
      '''copys snake net from parent Snake, mutates it and saves it as a new snake net'''
-     model = load_model('{}{}.h5'.format(FilePath ,parentSnake))
-     model = mutateWeights(model,mutationRate)
+     weights =weightsDict[parentSnake]
+     model = mutateWeights(model,weights,mutationRate)
      model.save('{}{}.h5'.format(FilePath ,childSnake))
 
 
@@ -320,7 +321,7 @@ async def communication(websocket, path):
                 elif started and newEpoch:
                     print("new epoch...")
                     snakesAliveOld = snakesAlive
-                    recreateSnakeNets(df['snakeId'],snakesAliveOld,mutationRate)
+                    recreateSnakeNets(model,df['snakeId'],weightsDict,snakesAliveOld,mutationRate)
 
                     await sendMessage(websocket, message["messageId"], "ack", data = {})
                     newEpoch = False
