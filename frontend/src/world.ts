@@ -2,7 +2,7 @@ import { Food } from "./food.js";
 import { Snake } from "./snake.js";
 import { GameObject, GameObjectType } from "./utils.js";
 
-const AI_CALL_FREQUENCY = 500;
+const AI_CALL_FREQUENCY = 10;
 const EPOCH_SNAKE_COUNT = 10;
 
 let foodCount = 0;
@@ -174,13 +174,14 @@ export class World {
   }
 
   private sendCurrentSnakeData() {
-    const wsData: any = this.snakes.reduce((acc, gO) => ({
+    const wsData: any = this.snakes.reduce((acc, snake) => ({
       ...acc,
-      [gO.id]: {
-        energyLevel: (gO as Snake).energyLevel,
-        matrix: this.toBitMatrix(gO),
-        velocityX: gO.velocity.x,
-        velocityY: gO.velocity.y,
+      [snake.id]: {
+        energyLevel: snake.energyLevel,
+        energyIntake: snake.energyIntake,
+        matrix: this.toBitMatrix(snake),
+        velocityX: snake.velocity.x,
+        velocityY: snake.velocity.y,
       }
     }), {});
     this.sendWebSocketMessage('snakes', wsData);

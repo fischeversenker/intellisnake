@@ -10,6 +10,7 @@ let world: World;
 let debuggerElement: HTMLDivElement;
 let webSocket: WebSocket;
 let epochCount = 0;
+let lastMessage = 0;
 
 (function() {
 
@@ -52,6 +53,7 @@ let epochCount = 0;
     world = newWorld;
 
     webSocket.onmessage = (event: MessageEvent) => {
+      lastMessage = Date.now();
       world.onWebSocketMessage(event);
     };
 
@@ -80,11 +82,10 @@ let epochCount = 0;
 <div>Epoch:</div><div>${world.epochCount}</div>
 <div>Snakes:</div><div>${world.snakes.length}</div>
 <div>Max EL:</div><div>${String(Math.floor(maxSnake && maxSnake.energyLevel ? maxSnake.energyLevel : 0))} (${maxSnake && maxSnake.id ? maxSnake.id : -1})</div>
-<div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - world.startTime)) / 1000)}s</div>`;
+<div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - world.startTime)) / 1000)}s</div>
+<div>Last message:</div><div>${Math.floor(Date.now() - lastMessage)}ms</div>`;
 
     }
-
-
 
     requestAnimationFrame(() => drawWorldInfo());
   }

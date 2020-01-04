@@ -9,7 +9,8 @@ export class Snake implements GameObject {
   size = 3;
   velocity: Vector = { x: 1, y: 1 };
 
-  energyLevel = 2500;
+  energyLevel = 1000;
+  energyIntake = 0;
   dead: boolean = false;
 
   tail: any[] = [];
@@ -91,6 +92,7 @@ export class Snake implements GameObject {
 
   eat(food: Food) {
     this.energyLevel += food.value;
+    this.energyIntake += food.value;
     food.dead = true;
   }
 
