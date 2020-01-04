@@ -40,28 +40,6 @@ mutationRate = 0.9
 
 
 #helpers
-# Reset Keras Session
-def reset_keras(model):
-    '''garabage collector for tensorflow'''
-    sess = get_session()
-    clear_session()
-    sess.close()
-    sess = get_session()
-
-    try:
-        del model # this is from global space - change this as you need
-    except:
-        pass
-
-    print(gc.collect()) # if it's done something you should see a number being outputted
-
-    # use the same config as you used to create the session
-    config = tensorflow.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 1
-    config.gpu_options.visible_device_list = "0"
-    set_session(tensorflow.Session(config=config))
-
-
 def df_construct(data):
     '''reads data from websocket and creates a dataframe'''
     df = pd.DataFrame.from_dict(data).T
@@ -176,7 +154,6 @@ def autoencoder(df,width, height, levels,train_x):
     layer2 = autoencoder.layers[2].get_weights()
     layer3 = autoencoder.layers[3].get_weights()
     layer4 = autoencoder.layers[4].get_weights()
-    reset_keras(autoencoder)
     return layer0,layer1,layer2,layer3,layer4
 
 def transferWeights(df,layer0,layer1,layer2,layer3,layer4):
@@ -188,7 +165,6 @@ def transferWeights(df,layer0,layer1,layer2,layer3,layer4):
         model.layers[3].set_weights(layer3)
         model.layers[4].set_weights(layer4)
         model.save('{}{}.h5'.format(FilePath ,snake))
-        reset_keras(autoencoder)
 
 def mutateWeights(model,mutationRate):
     #mutation rate
@@ -204,14 +180,12 @@ def recreateSnakeNets(snakeList,snakesAliveOld,mutationRate):
         model = load_model('{}{}.h5'.format(FilePath ,str(np.random.choice(snakesAliveOld,1)[0])[0] ) )
         model = mutateWeights(model,mutationRate)
         model.save('{}{}.h5'.format(FilePath ,snake))
-        reset_keras(model)
 
 def createSnakeNets(snakeList):
     '''creates snake nets with random weights'''
     for snake in snakeList:
         model = buildModel(width, height, levels,n_auxData)
         model.save('{}{}.h5'.format(FilePath ,snake))
-        reset_keras(model)
 
 def loadWeights(df):
     models = []
@@ -220,7 +194,6 @@ def loadWeights(df):
         #model._make_predict_function()
         a = np.array(model.get_weights())
         models.append(a)
-        #reset_keras(model)
     return dict(zip(df["snakeId"],models))
 
 
@@ -231,7 +204,6 @@ def predSnakeNets(model,weights,inputArray_, auxInput_):
     pred = model.predict([inputArray_, auxInput_])
 
     pred_ = [float(pred[1][0,0]),float(pred[0][0,0])]
-   # reset_keras(model)
     return pred_
 
 
@@ -240,7 +212,6 @@ def reproduceSnake(parentSnake,childSnake,mutationRate):
      model = load_model('{}{}.h5'.format(FilePath ,parentSnake))
      model = mutateWeights(model,mutationRate)
      model.save('{}{}.h5'.format(FilePath ,childSnake))
-     reset_keras(model)
 
 
 #create inputs&run pred
@@ -261,8 +232,7 @@ def snakeCommander(df,weightsDict,model):
         snakes.append(snake)
         preds.append(pred_)
     timestamp2 = time.time()
-    print("total runtime for alle snake predictitions")
-    print(timestamp2-timestamp1)
+    print("total runtime for alle snake predictitions: {}".format(str(timestamp2-timestamp1)))
     #store preds in dict
     outputDict = dict(zip(snakes,preds))
 
@@ -295,7 +265,7 @@ nest_asyncio.apply()
 
 #variables
 started = False
-newEpoch = True
+newEpoch = False
 snakesAlive = []
 modelDict = []
 model = []
@@ -307,7 +277,7 @@ async def communication(websocket, path):
     async for data in websocket:
         #try:
             message = json.loads(data)
-            print("Message: {} Type, {} Id, {} len data, started: {}, newEpoch: {}  ".format(message["type"],message["messageId"],len(message["data"]), str(started), str(newEpoch)))
+            print("Got new message:  type: {},  id: {},  len: {}\nState:  started: {},  newEpoch: {}".format(message["type"],message["messageId"],len(message["data"]), str(started), str(newEpoch)))
 
 
             if "epoch" == message["type"]:
@@ -316,14 +286,9 @@ async def communication(websocket, path):
 
             elif "reproduce" == message["type"]:
                 #create new clone of parent
-                #try:
                 parentSnake = message["data"]["parentId"]
                 childSnake = message["data"]["childId"]
                 reproduceSnake(parentSnake,childSnake,mutationRate)
-                #except:
-                 #   await sendMessage(websocket, message["messageId"], "error", data = "reproduce")
-
-                #else:
                 await sendMessage(websocket, message["messageId"], "ack")
 
             elif "snakes" == message["type"]:
@@ -333,8 +298,10 @@ async def communication(websocket, path):
 
                     df,snakesAlive = df_construct(message["data"])
                     createSnakeNets(df['snakeId'])
+                    print("done creating snake nets")
                     model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
                     weightsDict = loadWeights(df)
+                    print("done loading weights")
                     await sendMessage(websocket, message["messageId"], "ack", data = {})
                     started = True
 
