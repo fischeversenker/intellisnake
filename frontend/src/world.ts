@@ -5,6 +5,7 @@ import { EPOCH_TIME_MS } from "./main.js";
 
 const AI_CALL_FREQUENCY = 50;
 const DEBUG_FREQUENCY = 7;
+const EPOCH_SNAKE_COUNT = 10;
 
 let foodCount = 0;
 let worldCount = 0;
@@ -32,16 +33,10 @@ export class World {
   ) {
     this.width = canvas.width;
     this.height = canvas.height;
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
-    this.addSnake();
+
+    for (let i = 0; i < EPOCH_SNAKE_COUNT; i++) {
+      this.addSnake();
+    }
 
     if (worldCount > 1) {
       this.sendWebSocketMessage('epoch', {});
@@ -113,7 +108,7 @@ export class World {
 
     this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
 
-    if (Math.random() > 0.96) {
+    if (Math.random() > 0.97) {
       this.addGameObject(new Food(String(foodCount++), Math.random() * this.width, Math.random() * this.height));
     }
 

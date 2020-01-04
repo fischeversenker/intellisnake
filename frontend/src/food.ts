@@ -5,7 +5,7 @@ const MAX_FOOD_AGE = 10 * 1000;
 export class Food implements GameObject {
 
   type = GameObjectType.FOOD;
-  size = 2;
+  size = 3;
   velocity: Vector = { x: 0, y: 0 };
   dead = false;
   appearance: number = 0;
