@@ -174,10 +174,10 @@ def mutateWeights(model,weights,mutationRate):
 
 def recreateSnakeNets(model,snakeList,weightsDict,snakesAliveOld,mutationRate):
     '''for new epoch: loads historic snake Nets'''
-    
+
     dict((k, weightsDict[k]) for k in snakesAliveOld if k in weightsDict)
     for snake in snakeList:
-        x = str(np.random.choice(snakesAliveOld,1)[0])[0] 
+        x = str(np.random.choice(snakesAliveOld,1)[0])[0]
         weights = weightsDict[x]
         model = mutateWeights(model,weights,mutationRate)
         model.save('{}{}.h5'.format(FilePath ,snake))
@@ -223,7 +223,6 @@ def snakeCommander(df,weightsDict,model):
     metrics  = []
     timestamp1 = time.time()
     for snake in df['snakeId']:
-        print("predict snake")
         inputArray, auxInput = createInputs(df,snake)
         inputArray_, auxInput_ = reshaping(inputArray,auxInput)
 
@@ -233,7 +232,8 @@ def snakeCommander(df,weightsDict,model):
         snakes.append(snake)
         preds.append(pred_)
     timestamp2 = time.time()
-    print("total runtime for alle snake predictitions: {}".format(str(timestamp2-timestamp1)))
+    if debugMode:
+        print("total runtime for alle snake predictitions: {}".format(str(timestamp2-timestamp1)))
     #store preds in dict
     outputDict = dict(zip(snakes,preds))
 
@@ -269,80 +269,85 @@ started = False
 newEpoch = False
 snakesAlive = []
 modelDict = []
+weightsDict = []
 model = []
+
+debugMode = True
 
 async def communication(websocket, path):
 
-    global started, newEpoch, snakesAlive, modelDict , model, FilePath
+    global started, newEpoch, snakesAlive, modelDict, weightsDict, model, FilePath
 
     async for data in websocket:
-        #try:
-            message = json.loads(data)
+        message = json.loads(data)
+        if debugMode:
             print("Got new message:  type: {},  id: {},  len: {}\nState:  started: {},  newEpoch: {}".format(message["type"],message["messageId"],len(message["data"]), str(started), str(newEpoch)))
 
 
-            if "epoch" == message["type"]:
-                await sendMessage(websocket, message["messageId"], "ack")
-                newEpoch = True
+        if "epoch" == message["type"]:
+            await sendMessage(websocket, message["messageId"], "ack")
+            newEpoch = True
 
-            elif "reproduce" == message["type"]:
-                #create new clone of parent
-                parentSnake = message["data"]["parentId"]
-                childSnake = message["data"]["childId"]
-                reproduceSnake(parentSnake,childSnake,mutationRate)
-                await sendMessage(websocket, message["messageId"], "ack")
+        elif "reproduce" == message["type"]:
+            #create new clone of parent
+            parentSnake = message["data"]["parentId"]
+            childSnake = message["data"]["childId"]
+            reproduceSnake(parentSnake,childSnake,mutationRate)
+            await sendMessage(websocket, message["messageId"], "ack")
 
-            elif "snakes" == message["type"]:
+        elif "snakes" == message["type"]:
 
-                if not started:
+            if not started:
+                if debugMode:
                     print("starting...")
 
-                    df,snakesAlive = df_construct(message["data"])
-                    createSnakeNets(df['snakeId'])
+                df,snakesAlive = df_construct(message["data"])
+                createSnakeNets(df['snakeId'])
+                if debugMode:
                     print("done creating snake nets")
-                    model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
-                    weightsDict = loadWeights(df)
+                model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
+                weightsDict = loadWeights(df)
+                if debugMode:
                     print("done loading weights")
-                    await sendMessage(websocket, message["messageId"], "ack", data = {})
-                    started = True
+                await sendMessage(websocket, message["messageId"], "ack", data = {})
+                started = True
 
 
-                    '''
-                    to do
-                    create train data for autoencoder
-                    train_x = getTrainData(df)
-                    train autoencoder
-                    layer0,layer1,layer2,layer3,layer4 =autoencoder(df,width, height, levels,train_x)
-                    transfer weights to nets
-                    transferWeights(df,layer0,layer1,layer2,layer3,layer4)
-                    '''
+                '''
+                to do
+                create train data for autoencoder
+                train_x = getTrainData(df)
+                train autoencoder
+                layer0,layer1,layer2,layer3,layer4 =autoencoder(df,width, height, levels,train_x)
+                transfer weights to nets
+                transferWeights(df,layer0,layer1,layer2,layer3,layer4)
+                '''
 
 
-                elif started and newEpoch:
+            elif started and newEpoch:
+                if debugMode:
                     print("new epoch...")
-                    snakesAliveOld = snakesAlive
-                    recreateSnakeNets(model,df['snakeId'],weightsDict,snakesAliveOld,mutationRate)
+                snakesAliveOld = snakesAlive
+                recreateSnakeNets(model,df['snakeId'],weightsDict,snakesAliveOld,mutationRate)
 
-                    await sendMessage(websocket, message["messageId"], "ack", data = {})
-                    newEpoch = False
+                await sendMessage(websocket, message["messageId"], "ack", data = {})
+                newEpoch = False
 
-                elif started:
+            elif started:
+                if debugMode:
                     print("predicting...")
-                    df,snakesAlive = df_construct(message["data"])
-                    output_json,outputDf = snakeCommander(df,weightsDict,model)
-                    await sendMessage(websocket, message["messageId"], "snakes", output_json)
+                df,snakesAlive = df_construct(message["data"])
+                output_json,outputDf = snakeCommander(df,weightsDict,model)
+                await sendMessage(websocket, message["messageId"], "snakes", output_json)
 
-                else:
+            else:
+                if debugMode:
                     print("error")
-                    await sendMessage(websocket, message["messageId"], "error", "unknown type")
-       # except: # catch *all* exceptions
-        #  e = sys.exc_info()[0]
-         # print( "Error: %s" % e )
-          #raise Exception(e)
-
+                await sendMessage(websocket, message["messageId"], "error", "unknown type")
 
 async def sendMessage(webSocket, messageId, messageType, data = {}):
-    print("sending {}".format(messageType))
+    if debugMode:
+        print("sending {}".format(messageType))
     message = { "messageId": messageId, "type": messageType, "data": data }
     return await webSocket.send(json.dumps(message))
 

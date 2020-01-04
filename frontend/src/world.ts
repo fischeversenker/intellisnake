@@ -1,10 +1,8 @@
 import { Food } from "./food.js";
 import { Snake } from "./snake.js";
 import { GameObject, GameObjectType } from "./utils.js";
-import { EPOCH_TIME_MS } from "./main.js";
 
-const AI_CALL_FREQUENCY = 10;
-const DEBUG_FREQUENCY = 7;
+const AI_CALL_FREQUENCY = 500;
 const EPOCH_SNAKE_COUNT = 10;
 
 let foodCount = 0;
@@ -17,19 +15,20 @@ export class World {
   width: number;
   height: number;
 
-  public id = worldCount++;
+  id = worldCount++;
+  startTime: number = 0;
+
   private pendingWebSocketRequests: number[] = [];
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
-  private appearance = Date.now();
+  private broken = false;
 
   constructor(
     public canvas: HTMLCanvasElement,
     public context: CanvasRenderingContext2D,
     private webSocket: WebSocket,
-    private debug: HTMLDivElement,
-    private onFinish: Function,
-    private epochCount: number = 0,
+    private onNewEpoch: Function,
+    public epochCount: number = 0,
   ) {
     this.width = canvas.width;
     this.height = canvas.height;
@@ -39,22 +38,30 @@ export class World {
       this.addSnake();
     }
 
+    // clear canvas
+    this.context.fillStyle = 'white';
+    this.context.fillRect(0, 0, this.width, this.height);
+
     if (worldCount > 1) {
       this.sendWebSocketMessage('epoch', {});
-      this.running = false;
     } else {
-      this.begin();
+      this.sendCurrentSnakeData();
     }
+    this.printWaiting();
   }
 
   begin() {
     if (this.context) {
+      this.startTime = Date.now();
       this.running = true;
       requestAnimationFrame(() => this.update());
     }
   }
 
-  stop() {
+  stop(broken = false) {
+    if (broken) {
+      this.broken = true;
+    }
     this.running = false;
   }
 
@@ -64,91 +71,30 @@ export class World {
   }
 
   update() {
+    if (this.broken) {
+      return this.printBroken();
+    }
+
     if (!this.running) {
-      this.context.textAlign = 'center';
-      this.context.globalAlpha = 0.5;
-      this.context.fillStyle = 'white';
-      this.context.fillRect(0, 0, this.width, this.height);
-      this.context.globalAlpha = 1;
-      this.context.fillStyle = 'black';
-      this.context.fillText('PAUSED', this.width / 2, this.height / 2);
-      return;
+      return this.printWaiting();
     }
 
     if (this.snakes.length === 0) {
-      return this.onFinish();
+      return this.onNewEpoch();
     }
 
+    // clear canvas
     this.context.fillStyle = 'white';
     this.context.fillRect(0, 0, this.width, this.height);
 
-    const markedForDeletion: Array<GameObject> = [];
+    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {
+      this.sendCurrentSnakeData();
+    }
 
-    this.gameObjects.forEach(gO => {
-      gO.update();
-      gO.draw(this.context);
-
-      // check for collisions if this is a snake
-      if (gO.type === GameObjectType.SNAKE) {
-        this.gameObjects.filter(otherGO => otherGO !== gO).forEach(otherGO => {
-          if (gO.dead || otherGO.dead) { return; }
-
-          if (otherGO.collidesWith(gO)) {
-            if (otherGO.type === GameObjectType.FOOD) {
-              (gO as Snake).eat(otherGO as Food);
-            }
-            if (otherGO.type === GameObjectType.SNAKE) {
-              gO.dead = true;
-            }
-          }
-        });
-
-        // check if reproduces
-        if ((gO as Snake).energyLevel > 4000) {
-          const newSnake = this.addSnake();
-          this.sendWebSocketMessage('reproduce', { parentId: gO.id, childId: newSnake.id });
-          newSnake.energyLevel = Math.floor((gO as Snake).energyLevel / 2);
-          (gO as Snake).energyLevel = Math.floor((gO as Snake).energyLevel / 2);
-        }
-      }
-
-      if (gO.dead) {
-        markedForDeletion.push(gO);
-      }
-    });
-
-    this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
+    this.updateGameObjects();
 
     if (Math.random() > 0.99) {
       this.addGameObject(new Food(String(foodCount++), Math.abs((Math.random()-0.5)) * this.width, Math.abs((Math.random()-0.5)) * this.height));
-    }
-
-    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {
-      const wsData: any = this.snakes.reduce((acc, gO) => ({
-        ...acc,
-        [gO.id]: {
-          energyLevel: (gO as Snake).energyLevel,
-          matrix: this.toBitMatrix(gO),
-          velocityX: gO.velocity.x,
-          velocityY: gO.velocity.y,
-        }
-      }), {});
-      this.sendWebSocketMessage('snakes', wsData);
-    }
-
-    if (this.tickCount % DEBUG_FREQUENCY === 0) {
-      const maxSnake = this.gameObjects.reduce((acc: any, gO) => {
-        if (!acc || (gO as Snake).energyLevel > acc.energyLevel) {
-          return gO;
-        } else {
-          return acc;
-        }
-      }, null);
-      this.debug.innerHTML = `
-<div>Epoch:</div><div>${this.epochCount}</div>
-<div>Snakes:</div><div>${this.snakes.length}</div>
-<div>Max EL:</div><div>${String(Math.floor(maxSnake.energyLevel))} (${maxSnake.id})</div>
-<div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - this.appearance)) / 1000)}s</div>`;
     }
 
     this.tickCount++;
@@ -188,19 +134,9 @@ export class World {
     return this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE) as Snake[];
   }
 
-  sendWebSocketMessage(type: string, data: any): void {
-    console.log(`[WORLD]: >>> sending data of type ${type}`);
-    this.webSocket.send(JSON.stringify({
-      messageId: messageCount,
-      type,
-      data,
-    }));
-    this.pendingWebSocketRequests.push(messageCount++);
-  }
-
   onWebSocketMessage(event: any): void {
     const data = JSON.parse(event.data);
-    console.log(`[WORLD]: <<< received data of type ${data.type}`);
+    // console.log(`[WORLD]: <<< received data of type ${data.type}`);
     switch (data.type) {
       case 'ack':
         if (!this.running) {
@@ -219,14 +155,99 @@ export class World {
             destinationGameObject.updateVelocity({ x, y });
           }
         }
+        if (!this.running) {
+          this.begin();
+        }
         break;
     }
     this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== data.messageId);
+  }
+
+  private sendWebSocketMessage(type: string, data: any): void {
+    // console.log(`[WORLD]: >>> sending data of type ${type}`);
+    this.webSocket.send(JSON.stringify({
+      messageId: messageCount,
+      type,
+      data,
+    }));
+    this.pendingWebSocketRequests.push(messageCount++);
+  }
+
+  private sendCurrentSnakeData() {
+    const wsData: any = this.snakes.reduce((acc, gO) => ({
+      ...acc,
+      [gO.id]: {
+        energyLevel: (gO as Snake).energyLevel,
+        matrix: this.toBitMatrix(gO),
+        velocityX: gO.velocity.x,
+        velocityY: gO.velocity.y,
+      }
+    }), {});
+    this.sendWebSocketMessage('snakes', wsData);
   }
 
   private addSnake(): Snake {
     const newSnake = new Snake(String(this.snakes.length), Math.random() * this.width, Math.random() * this.height, this.width, this.height);
     this.gameObjects.push(newSnake);
     return newSnake;
+  }
+
+  private updateGameObjects() {
+    const markedForDeletion: Array<GameObject> = [];
+
+    this.gameObjects.forEach(gO => {
+      gO.update();
+      gO.draw(this.context);
+
+      // check for collisions if this is a snake
+      if (gO.type === GameObjectType.SNAKE) {
+        this.gameObjects.filter(otherGO => otherGO !== gO).forEach(otherGO => {
+          if (gO.dead || otherGO.dead) { return; }
+
+          if (otherGO.collidesWith(gO)) {
+            if (otherGO.type === GameObjectType.FOOD) {
+              (gO as Snake).eat(otherGO as Food);
+            }
+            if (otherGO.type === GameObjectType.SNAKE) {
+              gO.dead = true;
+            }
+          }
+        });
+
+        // check if reproduces
+        if ((gO as Snake).energyLevel > 4000) {
+          const newSnake = this.addSnake();
+          this.sendWebSocketMessage('reproduce', { parentId: gO.id, childId: newSnake.id });
+          newSnake.energyLevel = Math.floor((gO as Snake).energyLevel / 2);
+          (gO as Snake).energyLevel = Math.floor((gO as Snake).energyLevel / 2);
+        }
+      }
+
+      if (gO.dead) {
+        markedForDeletion.push(gO);
+      }
+    });
+
+    this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
+  }
+
+  private printBroken() {
+    this.context.textAlign = 'center';
+    this.context.globalAlpha = 0.5;
+    this.context.fillStyle = 'white';
+    this.context.fillRect(0, 0, this.width, this.height);
+    this.context.globalAlpha = 1;
+    this.context.fillStyle = 'black';
+    this.context.fillText('BROKEN :(', this.width / 2, this.height / 2);
+  }
+
+  private printWaiting() {
+    this.context.textAlign = 'center';
+    this.context.globalAlpha = 0.5;
+    this.context.fillStyle = 'white';
+    this.context.fillRect(0, 0, this.width, this.height);
+    this.context.globalAlpha = 1;
+    this.context.fillStyle = 'black';
+    this.context.fillText('WAITING...', this.width / 2, this.height / 2);
   }
 }

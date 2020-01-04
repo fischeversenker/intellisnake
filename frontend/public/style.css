@@ -7,11 +7,13 @@ body, html {
 
 body {
   background-color: #161616;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 canvas {
   transform: scale(3);
-  transform-origin: top left;
 }
 
 .debug {
@@ -21,7 +23,7 @@ canvas {
   padding: 20px;
   color: white;
   font-family: sans-serif;
-  width: 100%;
   display: grid;
+  grid-gap: 7px 13px;
   grid-template-columns: 1fr 2fr;
 }

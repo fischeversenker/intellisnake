@@ -17,35 +17,28 @@ let epochCount = 0;
 
     canvas = document.createElement('canvas');
     context = canvas.getContext('2d') as CanvasRenderingContext2D;
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
     document.body.appendChild(canvas);
 
     debuggerElement = document.createElement('div');
     debuggerElement.classList.add('debug');
     document.body.appendChild(debuggerElement);
 
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    drawWorldInfo();
 
     // webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
     webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
 
     webSocket.onopen = () => startNewWorld();
     webSocket.onclose = evt => {
-      world.stop();
+      world.stop(true);
       console.log('[MAIN]:', evt);
     };
 
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r' && !evt.ctrlKey) {
         startNewWorld();
-      }
-
-      if (evt.key === 'p') {
-        if (world.running) {
-          world.stop();
-        } else {
-          world.begin();
-        }
       }
     });
   });
@@ -65,16 +58,38 @@ let epochCount = 0;
     // make sure this epoch ends after EPOCH_TIME_MS passed
     setTimeout(() => {
       if (world === newWorld) {
-        onFinish();
+        onNewEpoch();
       }
     }, EPOCH_TIME_MS);
   }
 
   function makeNewWorld(): World {
-    return new World(canvas, context, webSocket, debuggerElement, () => onFinish(), epochCount);
+    return new World(canvas, context, webSocket, () => onNewEpoch(), epochCount);
   }
 
-  function onFinish() {
+  function drawWorldInfo() {
+    if (world && world.running) {
+      const maxSnake = world.snakes.reduce((acc: any, snake) => {
+        if (!acc || snake.energyLevel > acc.energyLevel) {
+          return snake;
+        } else {
+          return acc;
+        }
+      }, null);
+      debuggerElement.innerHTML = `
+<div>Epoch:</div><div>${world.epochCount}</div>
+<div>Snakes:</div><div>${world.snakes.length}</div>
+<div>Max EL:</div><div>${String(Math.floor(maxSnake && maxSnake.energyLevel ? maxSnake.energyLevel : 0))} (${maxSnake && maxSnake.id ? maxSnake.id : -1})</div>
+<div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - world.startTime)) / 1000)}s</div>`;
+
+    }
+
+
+
+    requestAnimationFrame(() => drawWorldInfo());
+  }
+
+  function onNewEpoch() {
     epochCount++;
     setTimeout(() => {
       startNewWorld();
