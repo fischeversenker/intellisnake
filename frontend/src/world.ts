@@ -45,11 +45,7 @@ export class World {
     this.context.fillStyle = 'white';
     this.context.fillRect(0, 0, this.width, this.height);
 
-    if (worldCount > 1) {
-      this.sendWebSocketMessage('epoch', {});
-    } else {
-      this.sendCurrentSnakeData();
-    }
+    this.sendWebSocketMessage('epoch', { snakeIds: this.snakes.map(snake => snake.id) });
     this.printWaiting();
   }
 
@@ -220,8 +216,7 @@ export class World {
         if ((gO as Snake).energyLevel > SNAKE_REPRODUCTION_MIN_EL) {
           const newSnake = this.addSnake();
           this.sendWebSocketMessage('reproduce', { parentId: gO.id, childId: newSnake.id });
-          newSnake.energyLevel = Math.floor((gO as Snake).energyLevel / 2);
-          (gO as Snake).energyLevel = Math.floor((gO as Snake).energyLevel / 2);
+          newSnake.energyLevel = 1000;
         }
       }
     });
