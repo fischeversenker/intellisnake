@@ -154,9 +154,6 @@ export class World {
             destinationGameObject.updateVelocity({ x, y });
           }
         }
-        if (!this.running) {
-          this.begin();
-        }
         break;
     }
     this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== data.messageId);
