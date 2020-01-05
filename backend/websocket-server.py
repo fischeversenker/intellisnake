@@ -1,10 +1,10 @@
-from .ai import AI
 import json
 import websockets
 import asyncio
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+from ai import AI
 
 DEBUG_MODE = True
 
@@ -18,10 +18,11 @@ class WebSocketServer:
         self.snakesAlive = []
         self.weightsDict = {}
         self.model = []
+        self.population = []
 
     def start(self):
-        websockets.serve(self.communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
         print("server running...")
+        return websockets.serve(self.communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
 
     async def communication(self, websocket, path):
         async for data in websocket:
@@ -32,54 +33,40 @@ class WebSocketServer:
 
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
-        if messageType == "epoch":
+        if messageType == "generation":
             if not self.started:
                 if DEBUG_MODE:
                     print("starting...")
 
-                self.snakesAlive = messageData["snakeIds"]
-                self.ai.createSnakeNets(self.snakesAlive)
+                self.population = messageData["snakeIds"]
+                self.weightsDict = self.ai.initializeWeights(self.population)
                 if DEBUG_MODE:
-                    print("done creating snake nets")
-                self.model = self.ai.load_model('{}{}.h5'.format('./models/', 1)) #load random model and adjust weights later
-                print(self.snakesAlive)
-                weightsDict = self.ai.loadWeights(self.snakesAlive)
-                if DEBUG_MODE:
-                    print("done loading weights")
-
-                await sendMessage(websocket, messageId, "ack", data = {})
+                    print("done initializeWeights")
+                await self.sendMessage(websocket, messageId, "ack", data = {})
                 self.started = True
             else:
                 if DEBUG_MODE:
-                    print("new epoch...")
-                snakesAliveOld = self.snakesAlive
-                self.snakesAlive = messageData["snakeIds"]
-                self.ai.recreateSnakeNets(self.model, self.snakesAlive, self.weightsDict, snakesAliveOld, self.mutationRate)
-                weightsDict = self.ai.loadWeights(self.snakesAlive)
+                    print("new generation...")
+                survivors = self.population
+                self.population = messageData["snakeIds"]
+                self.weightsDict = self.ai.reinitializeWeights(self.population,survivors,self.weightsDict)
+                
                 if DEBUG_MODE:
                     print("new weights loaded...")
-                await sendMessage(websocket, messageId, "ack", snakesAliveOld)
+                await self.sendMessage(websocket, messageId, "ack", survivors.tolist())
 
-        # maybe get rid of this completely?
-        elif messageType == "reproduce":
-            # create new clone of parent
-            parentSnake = messageData["parentId"]
-            childSnake = messageData["childId"]
-            self.ai.reproduceSnake(model, weightsDict, parentSnake, childSnake, self.mutationRate)
-            await sendMessage(websocket, messageId, "ack")
-
-        elif messageType == "snakes":
+        elif messageType == "data":
             if self.started:
                 if DEBUG_MODE:
                     print("predicting...")
-                df,snakesAlive = self.ai.df_construct(messageData)
-                output_json,outputDf = self.ai.snakeCommander(df,weightsDict,model)
-                await sendMessage(websocket, messageId, "snakes", output_json)
+                df,self.population = self.ai.df_construct(messageData)
+                output_json = self.ai.populationOperator(self.population,df,self.weightsDict)
+                await self.sendMessage(websocket, messageId, "data", output_json)
             else:
-                await sendMessage(websocket, messageId, "error", "you need to send epoch message before sending snake data")
+                await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
 
         else:
-            await sendMessage(websocket, messageId, "error", "unknown type" + messageType)
+            await self.sendMessage(websocket, messageId, "error", "unknown type" + messageType)
 
 
     async def sendMessage(self, webSocket, messageId, messageType, data = {}):
@@ -89,7 +76,5 @@ class WebSocketServer:
         return await webSocket.send(json.dumps(message))
 
 
-server = WebSocketServer()
-
-asyncio.get_event_loop().run_until_complete(server.start)
+asyncio.get_event_loop().run_until_complete(WebSocketServer().start())
 asyncio.get_event_loop().run_forever()

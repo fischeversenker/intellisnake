@@ -27,22 +27,13 @@ from keras.backend.tensorflow_backend import clear_session
 from keras.backend.tensorflow_backend import get_session
 import tensorflow
 
-
-#parameters
-FilePath = "./models/"
-width = 50 #width of input matrix
-height = 50 #height of input matrix
-levels = 4 # number of classes in matrix
-n_auxData = 3 #aux data
-mutationRate = 0.1
-
 class AI():
     def __init__(self):
         self.FilePath = "./models/"
         self.width = 50 #width of input matrix
         self.height = 50 #height of input matrix
         self.levels = 4 # number of classes in matrix
-        self.n_auxData = 33 #aux data
+        self.n_auxData = 3 #aux data
         self.mutationRate = 0.1  #standard devivation for selection from normal distrubtion on Generation > 0" 
         self.variance = 0.9 #standard devivation for selection from normal distrubtion on Generation = 0" 
         self.network = []
@@ -71,7 +62,7 @@ class AI():
     '''reshape arrays into input tensor'''
     def reshaping(self, inputArray,auxInput):
         inputArray_ = inputArray.reshape(-1,self.width, self.height,self.levels) #Conv2D accepts 3D array
-        auxInput_ = auxInput.reshape(-1,n_auxData)
+        auxInput_ = auxInput.reshape(-1,self.n_auxData)
         return inputArray_,auxInput_
     
     '''builds a model and compiles it with random weights'''
@@ -80,7 +71,7 @@ class AI():
         #matrix input
         mainInput = Input(shape=(self.width, self.height, self.levels))
         #meta input (Aka energy level, direction, velocity)
-        auxiliaryInput = Input(shape=(n_auxData,), name='aux_input')
+        auxiliaryInput = Input(shape=(self.n_auxData,), name='aux_input')
 
         #CNN Network for processing matrix Data
         x = Conv2D(32, (3, 3), padding='same')(mainInput)
@@ -170,5 +161,5 @@ class AI():
             inputArray, auxInput = self.createInputs(df,individuum)
             inputArray_, auxInput_ = self.reshaping(inputArray,auxInput)
             pred_ = self.prediction(weightsDict[individuum],inputArray_, auxInput_)
-            outputDict.update(individuum,pred_)
+            outputDict.update([(individuum,pred_)],)
         return outputDict 
