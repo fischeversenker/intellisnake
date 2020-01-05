@@ -6,10 +6,10 @@ Created on Fri Jan  3 18:46:02 2020
 """
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import sys
 import asyncio
 import websockets
-import nest_asyncio
 import json
 
 # suppress FutuerWarnings from Pandas
@@ -28,10 +28,8 @@ from keras.backend.tensorflow_backend import get_session
 import tensorflow
 
 
-FilePath = "./"
 #parameters
-len_1d_array = 2500
-
+FilePath = "./"
 width = 50 #width of input matrix
 height = 50 #height of input matrix
 levels = 4 # number of classes in matrix
@@ -47,10 +45,6 @@ def df_construct(data):
     df['snakeId'] = df['snakeId'].astype(str)
     snakesAlive = df['snakeId'].unique()
     return df, snakesAlive
-def snakeList_construct(data):
-    '''reads data from websocket and creates a dataframe for pred'''
-    list_ = data["snakeIds"]
-    return list_
 
 #create input tensors
 def createInputs(df,snake):
@@ -63,7 +57,6 @@ def createInputs(df,snake):
 
 
     return inputArray, auxInput
-
 
 ##reshaping
 def reshaping(inputArray,auxInput):
@@ -81,8 +74,6 @@ def getTrainData(df):
        train_x = np.append(train_x,inputArray_)
     return train_x
 
-
-
 def buildModel(width, height, levels,n_auxData):
     ##input placeholder
     #matrix input
@@ -92,7 +83,7 @@ def buildModel(width, height, levels,n_auxData):
 
 
     #CNN Network for processing matrix Data
-    x= Conv2D(32, (3, 3), padding='same')(mainInput)
+    x = Conv2D(32, (3, 3), padding='same')(mainInput)
     x = MaxPooling2D((2, 2))(x)
     x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
     x = MaxPooling2D((2, 2), padding='same')(x)
@@ -121,7 +112,6 @@ def buildModel(width, height, levels,n_auxData):
                   loss_weights=[1., 0.2])
     return model
 
-
 def autoencoder(df,width, height, levels,train_x):
     '''creates a autoencoder model, trains it and returns weights from layers'''
     #matrix input
@@ -129,7 +119,7 @@ def autoencoder(df,width, height, levels,train_x):
 
 
     #CNN Network for processing matrix Data
-    x= Conv2D(32, (3, 3), padding='same')(mainInput)
+    x = Conv2D(32, (3, 3), padding='same')(mainInput)
     x = MaxPooling2D((2, 2))(x)
     x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
     x = MaxPooling2D((2, 2), padding='same')(x)
@@ -161,13 +151,13 @@ def autoencoder(df,width, height, levels,train_x):
 
 def transferWeights(df,layer0,layer1,layer2,layer3,layer4):
     for snake in df["snakeId"]:
-        model = load_model('{}{}.h5'.format(FilePath ,snake))
+        model = load_model('{}{}.h5'.format(FilePath, snake))
         model.layers[0].set_weights(layer0)
         model.layers[1].set_weights(layer1)
         model.layers[2].set_weights(layer2)
         model.layers[3].set_weights(layer3)
         model.layers[4].set_weights(layer4)
-        model.save('{}{}.h5'.format(FilePath ,snake))
+        model.save('{}{}.h5'.format(FilePath, snake))
 
 def mutateWeights(model,weights,mutationRate):
     #mutation rate
@@ -183,40 +173,36 @@ def recreateSnakeNets(model,snakeList,weightsDict,snakesAliveOld,mutationRate):
         x = str(np.random.choice(snakesAliveOld,1)[0])[0]
         weights = weightsDict[x]
         model = mutateWeights(model,weights,mutationRate)
-        model.save('{}{}.h5'.format(FilePath ,snake))
+        model.save('{}{}.h5'.format(FilePath, snake))
 
 def createSnakeNets(snakeList):
     '''creates snake nets with random weights'''
     for snake in snakeList:
         model = buildModel(width, height, levels,n_auxData)
-        model.save('{}{}.h5'.format(FilePath ,snake))
+        model.save('{}{}.h5'.format(FilePath, snake))
 
 def loadWeights(snakeList):
     models = []
     for snake in snakeList:
-        model = load_model('{}{}.h5'.format(FilePath ,snake))
+        model = load_model('{}{}.h5'.format(FilePath, snake))
         #model._make_predict_function()
         a = np.array(model.get_weights())
         models.append(a)
     return dict(zip(snakeList,models))
 
-
 def predSnakeNets(model,weights,inputArray_, auxInput_):
     '''loads snake nets and predicts next movement'''
-    #model = load_model('{}{}.h5'.format(FilePath ,snake))
+    #model = load_model('{}{}.h5'.format(FilePath, snake))
     model.set_weights(weights)
     pred = model.predict([inputArray_, auxInput_])
 
-    pred_ = [float(pred[1][0,0]),float(pred[0][0,0])]
-    return pred_
-
+    return [float(pred[1][0,0]),float(pred[0][0,0])]
 
 def reproduceSnake(model,weightsDict,parentSnake,childSnake,mutationRate):
      '''copys snake net from parent Snake, mutates it and saves it as a new snake net'''
      weights = weightsDict[parentSnake]
      model = mutateWeights(model,weights,mutationRate)
      model.save('{}{}.h5'.format(FilePath, childSnake))
-
 
 #create inputs&run pred
 def snakeCommander(df,weightsDict,model):
@@ -261,82 +247,75 @@ def snakeCommander(df,weightsDict,model):
 '''
 
 
-
-
-#function to get asyncio running in spyder
-nest_asyncio.apply()
-
 #variables
 started = False
 snakesAlive = []
-modelDict = []
 weightsDict = []
 model = []
 
 debugMode = True
 
 async def communication(websocket, path):
-
-    global started, snakesAlive, modelDict, weightsDict, model, FilePath
-
     async for data in websocket:
         message = json.loads(data)
-        if debugMode:
-            print("Got new message:  type: {},  id: {},  len: {}\nState:  started: {}".format(message["type"],message["messageId"],len(message["data"]), str(started)))
+        await processMessage(websocket, message["messageId"], message["type"], message["data"])
 
+async def processMessage(websocket, messageId, messageType, messageData = {}):
+    global started, snakesAlive, weightsDict, model, FilePath
 
-        if "epoch" == message["type"]:
-            if not started:
-                if debugMode:
-                    print("starting...")
+    if debugMode:
+        print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(started)))
+    if messageType == "epoch":
+        if not started:
+            if debugMode:
+                print("starting...")
 
-                snakes= snakeList_construct(message["data"])
-                createSnakeNets(snakes)
-                if debugMode:
-                    print("done creating snake nets")
-                model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
-                print(snakes)
-                weightsDict = loadWeights(snakes)
-                if debugMode:
-                    print("done loading weights")
+            snakesAlive = messageData["snakeIds"]
+            createSnakeNets(snakesAlive)
+            if debugMode:
+                print("done creating snake nets")
+            model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
+            print(snakesAlive)
+            weightsDict = loadWeights(snakesAlive)
+            if debugMode:
+                print("done loading weights")
 
-                await sendMessage(websocket, message["messageId"], "ack", data = {})
-                started = True
-            else:
-                if debugMode:
-                    print("new epoch...")
+            await sendMessage(websocket, messageId, "ack", data = {})
+            started = True
+        else:
+            if debugMode:
+                print("new epoch...")
+            snakesAliveOld = snakesAlive
+            snakesAlive = messageData["snakeIds"]
+            if len(snakesAliveOld) == 0:
                 snakesAliveOld = snakesAlive
-                snakes = snakeList_construct(message["data"])
-                if len(snakesAliveOld) == 0:
-                    snakesAliveOld = snakes
-                recreateSnakeNets(model, snakes, weightsDict, snakesAliveOld, mutationRate)
-                weightsDict = loadWeights(snakes)
-                if debugMode:
-                    print("new weights loaded...")
-                
-                await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld)
-                
+            recreateSnakeNets(model, snakesAlive, weightsDict, snakesAliveOld, mutationRate)
+            weightsDict = loadWeights(snakesAlive)
+            if debugMode:
+                print("new weights loaded...")
+            await sendMessage(websocket, messageId, "ack", snakesAliveOld)
 
-        elif "reproduce" == message["type"]:
-            #create new clone of parent
-            parentSnake = message["data"]["parentId"]
-            childSnake = message["data"]["childId"]
-            reproduceSnake(model, weightsDict, parentSnake, childSnake, mutationRate)
-            await sendMessage(websocket, message["messageId"], "ack")
+    # maybe get rid of this completely?
+    elif messageType == "reproduce":
+        #create new clone of parent
+        parentSnake = messageData["parentId"]
+        childSnake = messageData["childId"]
+        reproduceSnake(model, weightsDict, parentSnake, childSnake, mutationRate)
+        await sendMessage(websocket, messageId, "ack")
 
-        elif "snakes" == message["type"]:
+    elif messageType == "snakes":
+        if started:
+            if debugMode:
+                print("predicting...")
+            df,snakesAlive = df_construct(messageData)
+            output_json,outputDf = snakeCommander(df,weightsDict,model)
+            await sendMessage(websocket, messageId, "snakes", output_json)
+        else:
+            await sendMessage(websocket, messageId, "error", "you need to send epoch message before sending snake data")
 
-            if started:
-                if debugMode:
-                    print("predicting...")
-                df,snakesAlive = df_construct(message["data"])
-                output_json,outputDf = snakeCommander(df,weightsDict,model)
-                await sendMessage(websocket, message["messageId"], "snakes", output_json)
+    else:
+        await sendMessage(websocket, messageId, "error", "unknown type" + messageType)
 
-            else:
-                if debugMode:
-                    print("error")
-                await sendMessage(websocket, message["messageId"], "error", "unknown type")
 
 async def sendMessage(webSocket, messageId, messageType, data = {}):
     if debugMode:
