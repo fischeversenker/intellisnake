@@ -36,7 +36,7 @@ width = 50 #width of input matrix
 height = 50 #height of input matrix
 levels = 4 # number of classes in matrix
 n_auxData = 3 #aux data
-mutationRate = 0.9
+mutationRate = 0.1
 
 
 #helpers
@@ -171,7 +171,7 @@ def transferWeights(df,layer0,layer1,layer2,layer3,layer4):
 
 def mutateWeights(model,weights,mutationRate):
     #mutation rate
-    mutator = np.random.uniform(-(mutationRate),mutationRate)
+    mutator = np.random.normal(loc = 0, scale = mutationRate, size = 1)
     model.set_weights(weights + mutator*weights)
     return model
 
@@ -225,8 +225,6 @@ def snakeCommander(df,weightsDict,model):
     preds = []
     metrics  = []
     timestamp1 = time.time()
-    print('weightsDict:')
-    print(weightsDict)
     for snake in df['snakeId']:
         inputArray, auxInput = createInputs(df,snake)
         inputArray_, auxInput_ = reshaping(inputArray,auxInput)
@@ -309,11 +307,15 @@ async def communication(websocket, path):
                     print("new epoch...")
                 snakesAliveOld = snakesAlive
                 snakes = snakeList_construct(message["data"])
+                if len(snakesAliveOld) == 0:
+                    snakesAliveOld = snakes
                 recreateSnakeNets(model, snakes, weightsDict, snakesAliveOld, mutationRate)
                 weightsDict = loadWeights(snakes)
                 if debugMode:
                     print("new weights loaded...")
-                await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld.tolist())
+                
+                await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld)
+                
 
         elif "reproduce" == message["type"]:
             #create new clone of parent
