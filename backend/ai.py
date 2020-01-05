@@ -292,13 +292,13 @@ async def communication(websocket, path):
                 if debugMode:
                     print("starting...")
 
-                snakesAlive = snakeList_construct(message["data"])
-                createSnakeNets(snakesAlive)
+                snakes= snakeList_construct(message["data"])
+                createSnakeNets(snakes)
                 if debugMode:
                     print("done creating snake nets")
                 model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
-                print(snakesAlive)
-                weightsDict = loadWeights(snakesAlive)
+                print(snakes)
+                weightsDict = loadWeights(snakes)
                 if debugMode:
                     print("done loading weights")
 
@@ -308,9 +308,9 @@ async def communication(websocket, path):
                 if debugMode:
                     print("new epoch...")
                 snakesAliveOld = snakesAlive
-                snakesAlive = snakeList_construct(message["data"])
-                recreateSnakeNets(model, snakesAlive, weightsDict, snakesAliveOld, mutationRate)
-                weightsDict = loadWeights(snakesAlive)
+                snakes = snakeList_construct(message["data"])
+                recreateSnakeNets(model, snakes, weightsDict, snakesAliveOld, mutationRate)
+                weightsDict = loadWeights(snakes)
                 if debugMode:
                     print("new weights loaded...")
                 await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld.tolist())
