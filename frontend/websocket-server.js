@@ -17,7 +17,7 @@ wss.on('connection', function connection(ws) {
       setTimeout(() => {
         ws.send(JSON.stringify({
           messageId: data.messageId,
-          type: 'snakes',
+          type: 'data',
           data: resultData,
         }));
       }, 20);

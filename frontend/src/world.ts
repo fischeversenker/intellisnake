@@ -111,7 +111,9 @@ export class World {
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {
-      this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
+      if (this.snakes.length > 0) {
+        this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
+      }
     }
 
     this.updateGameObjects();
@@ -155,6 +157,10 @@ export class World {
 
   get snakes(): Snake[] {
     return this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE) as Snake[];
+  }
+
+  get nonSnakes(): GameObject[] {
+    return this.gameObjects.filter(gO => gO.type !== GameObjectType.SNAKE);
   }
 
   onWebSocketMessage(event: any): void {
@@ -216,28 +222,21 @@ export class World {
     this.gameObjects.forEach(gO => {
       gO.update();
       gO.draw(this.context);
-
-      // check for collisions if this is a snake
-      if (gO.type === GameObjectType.SNAKE) {
-        this.gameObjects.filter(otherGO => otherGO !== gO).forEach(otherGO => {
-          if (gO.dead || otherGO.dead) { return; }
-
-          if (otherGO.collidesWith(gO)) {
-            if (otherGO.type === GameObjectType.FOOD) {
-              (gO as Snake).eat(otherGO as Food);
-            }
-            if (otherGO.type === GameObjectType.SNAKE) {
-              (gO as Snake).die();
-            }
-          }
-        });
-      }
     });
 
-    const oldSnakes = [...this.snakes];
+    this.snakes.forEach(snake => {
+      this.nonSnakes.forEach(nonSnake => {
+        if (snake.collidesWith(nonSnake)) {
+          if (nonSnake.type === GameObjectType.FOOD) {
+            snake.eat(nonSnake as Food);
+          }
+        }
+      });
+    });
+
     this.gameObjects = this.gameObjects.filter(gO => !gO.dead);
-    if (oldSnakes.length > 0 && this.snakes.length === 0) {
-      this.champions = [...oldSnakes];
+    if (this.snakes.length > 0) {
+      this.champions = [...this.snakes];
     }
   }
 
