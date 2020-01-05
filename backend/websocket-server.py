@@ -38,7 +38,7 @@ class WebSocketServer:
                 if DEBUG_MODE:
                     print("starting...")
 
-                self.population = messageData["snakeIds"]
+                self.population = list(messageData["snakeIds"])
                 self.weightsDict = self.ai.initializeWeights(self.population)
                 if DEBUG_MODE:
                     print("done initializeWeights")
@@ -48,7 +48,7 @@ class WebSocketServer:
                 if DEBUG_MODE:
                     print("new generation...")
                 survivors = self.population
-                self.population = messageData["snakeIds"]
+                self.population = list(messageData["snakeIds"])
                 self.weightsDict = self.ai.reinitializeWeights(self.population,survivors,self.weightsDict)
                 
                 if DEBUG_MODE:

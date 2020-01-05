@@ -26,6 +26,7 @@ from keras.backend.tensorflow_backend import set_session
 from keras.backend.tensorflow_backend import clear_session
 from keras.backend.tensorflow_backend import get_session
 import tensorflow
+import random
 
 class AI():
     def __init__(self):
@@ -37,6 +38,7 @@ class AI():
         self.mutationRate = 0.1  #standard devivation for selection from normal distrubtion on Generation > 0" 
         self.variance = 0.9 #standard devivation for selection from normal distrubtion on Generation = 0" 
         self.network = []
+        self.survivorRate = 9
     '''Functions to extract data from messages,
     reshape inputs and create tensor'''
 
@@ -121,21 +123,28 @@ class AI():
         for individuum in population: 
             weights = np.array(self.network.get_weights())
             newWeights = self.mutateWeights(weights,self.variance)
-            newWeights = self.mutateWeights(weights,self.variance)
             models.append(newWeights)
         weightsDict = dict(zip(population,models))
         return weightsDict
 
     ''' creates weights for individuums of next generation'''
     def reinitializeWeights(self,population,survivors,weightsDict):
-        weightsDict_survivors = dict((k, weightsDict[k]) for k in survivors if k in weightsDict)
-        models = []
-        for individuum in population:
-            x = str(np.random.choice(survivors,1)[0])[0] #selects from survivors
-            weights = weightsDict_survivors[x]
-            newWeights = self.mutateWeights(weights,self.mutationRate)
-            models.append(np.array(newWeights))
-        weightsDict = dict(zip(population,models))
+
+        nonSurvivors = list(set(population) - set(survivors))
+        
+        modelWeights = []
+    
+        for id_ in population:
+
+            weights = None
+            if len(modelWeights) > self.survivorRate:
+                weights = weightsDict[random.choice(nonSurvivors)]
+            else:
+                weights = weightsDict[random.choice(survivors)]
+            newWeights = self.mutateWeights(weights, self.mutationRate)
+            modelWeights.append(np.array(newWeights))
+
+        weightsDict = dict(zip(population,modelWeights))
         return weightsDict
 
     '''loads model from list with model name'''
