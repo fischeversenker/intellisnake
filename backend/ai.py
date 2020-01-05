@@ -41,13 +41,16 @@ mutationRate = 0.9
 
 #helpers
 def df_construct(data):
-    '''reads data from websocket and creates a dataframe'''
+    '''reads data from websocket and creates a dataframe for pred'''
     df = pd.DataFrame.from_dict(data).T
     df['snakeId'] = df.index
     df['snakeId'] = df['snakeId'].astype(str)
     snakesAlive = df['snakeId'].unique()
     return df, snakesAlive
-
+def snakeList_construct(data):
+    '''reads data from websocket and creates a dataframe for pred'''
+    list_ = data["snakeIds"]
+    return list_
 
 #create input tensors
 def createInputs(df,snake):
@@ -188,14 +191,14 @@ def createSnakeNets(snakeList):
         model = buildModel(width, height, levels,n_auxData)
         model.save('{}{}.h5'.format(FilePath ,snake))
 
-def loadWeights(df):
+def loadWeights(snakeList):
     models = []
-    for snake in df["snakeId"]:
+    for snake in snakeList:
         model = load_model('{}{}.h5'.format(FilePath ,snake))
         #model._make_predict_function()
         a = np.array(model.get_weights())
         models.append(a)
-    return dict(zip(df["snakeId"],models))
+    return dict(zip(snakeList,models))
 
 
 def predSnakeNets(model,weights,inputArray_, auxInput_):
@@ -289,22 +292,13 @@ async def communication(websocket, path):
                 if debugMode:
                     print("starting...")
 
-                '''
-                to do
-                create train data for autoencoder
-                train_x = getTrainData(df)
-                train autoencoder
-                layer0,layer1,layer2,layer3,layer4 =autoencoder(df,width, height, levels,train_x)
-                transfer weights to nets
-                transferWeights(df,layer0,layer1,layer2,layer3,layer4)
-                '''
-
-                df,snakesAlive = df_construct(message["data"])
-                createSnakeNets(df['snakeId'])
+                snakesAlive = snakeList_construct(message["data"])
+                createSnakeNets(snakesAlive)
                 if debugMode:
                     print("done creating snake nets")
                 model = load_model('{}{}.h5'.format(FilePath ,1)) #load random model and adjust weights later
-                weightsDict = loadWeights(df)
+                print(snakesAlive)
+                weightsDict = loadWeights(snakesAlive)
                 if debugMode:
                     print("done loading weights")
 
@@ -314,9 +308,9 @@ async def communication(websocket, path):
                 if debugMode:
                     print("new epoch...")
                 snakesAliveOld = snakesAlive
-                df,snakesAlive = df_construct(message["data"])
-                recreateSnakeNets(model, df['snakeId'], weightsDict, snakesAliveOld, mutationRate)
-                weightsDict = loadWeights(df)
+                snakesAlive = snakeList_construct(message["data"])
+                recreateSnakeNets(model, snakesAlive, weightsDict, snakesAliveOld, mutationRate)
+                weightsDict = loadWeights(snakesAlive)
                 if debugMode:
                     print("new weights loaded...")
                 await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld.tolist())
