@@ -330,7 +330,7 @@ async def communication(websocket, path):
                 snakesAliveOld = snakesAlive
                 recreateSnakeNets(model,df['snakeId'],weightsDict,snakesAliveOld,mutationRate)
 
-                await sendMessage(websocket, message["messageId"], "ack", data = {})
+                await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld.tolist())
                 newEpoch = False
 
             elif started:

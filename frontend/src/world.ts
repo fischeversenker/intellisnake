@@ -4,6 +4,7 @@ import { GameObject, GameObjectType } from "./utils.js";
 
 const AI_CALL_FREQUENCY = 10;
 const EPOCH_SNAKE_COUNT = 10;
+const SNAKE_REPRODUCTION_MIN_EL = 1500;
 
 let foodCount = 0;
 let worldCount = 0;
@@ -216,7 +217,7 @@ export class World {
         });
 
         // check if reproduces
-        if ((gO as Snake).energyLevel > 4000) {
+        if ((gO as Snake).energyLevel > SNAKE_REPRODUCTION_MIN_EL) {
           const newSnake = this.addSnake();
           this.sendWebSocketMessage('reproduce', { parentId: gO.id, childId: newSnake.id });
           newSnake.energyLevel = Math.floor((gO as Snake).energyLevel / 2);
