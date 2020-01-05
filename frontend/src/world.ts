@@ -24,6 +24,8 @@ export class World {
   private tickCount = 0;
   private broken = false;
 
+  champions: Snake[] = [];
+
   constructor(
     public canvas: HTMLCanvasElement,
     public context: CanvasRenderingContext2D,
@@ -195,8 +197,6 @@ export class World {
   }
 
   private updateGameObjects() {
-    const markedForDeletion: Array<GameObject> = [];
-
     this.gameObjects.forEach(gO => {
       gO.update();
       gO.draw(this.context);
@@ -211,7 +211,7 @@ export class World {
               (gO as Snake).eat(otherGO as Food);
             }
             if (otherGO.type === GameObjectType.SNAKE) {
-              gO.dead = true;
+              (gO as Snake).die();
             }
           }
         });
@@ -224,13 +224,13 @@ export class World {
           (gO as Snake).energyLevel = Math.floor((gO as Snake).energyLevel / 2);
         }
       }
-
-      if (gO.dead) {
-        markedForDeletion.push(gO);
-      }
     });
 
-    this.gameObjects = this.gameObjects.filter(gO => !(markedForDeletion.includes(gO)));
+    const oldSnakes = [...this.snakes];
+    this.gameObjects = this.gameObjects.filter(gO => !gO.dead);
+    if (oldSnakes.length > 0 && this.snakes.length === 0) {
+      this.champions = [...oldSnakes];
+    }
   }
 
   private printBroken() {

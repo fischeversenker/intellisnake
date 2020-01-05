@@ -1,4 +1,5 @@
 import { World } from "./world.js";
+import { Snake } from "./snake.js";
 
 export const CANVAS_WIDTH = 100;
 export const CANVAS_HEIGHT = 100;
@@ -12,6 +13,7 @@ let webSocket: WebSocket;
 let epochCount = 0;
 let lastMessage = 0;
 let lastAckData: any;
+let lastSurvivors: Snake[];
 
 (function() {
 
@@ -83,6 +85,9 @@ let lastAckData: any;
           return acc;
         }
       }, null);
+      const survivorData = lastSurvivors
+        ? lastSurvivors.map(survivor => `LifeSpan: ${survivor.getLifespan()}s | EnergyIntake: ${survivor.energyIntake}`).join('\n')
+        : '';
       debuggerElement.innerHTML = `
 <div>Epoch:</div><div>${world.epochCount}</div>
 <div>Snakes:</div><div>${world.snakes.length}</div>
@@ -90,6 +95,7 @@ let lastAckData: any;
 <div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - world.startTime)) / 1000)}s</div>
 <div>Last message:</div><div>${Math.floor(Date.now() - lastMessage)}ms</div>
 <div>Last ack data:</div><div>${lastAckData ? Object.keys(lastAckData) : 'null'}</div>
+<div>Last survivors:</div><div>${survivorData}</div>
 `;
 
     }
@@ -100,6 +106,7 @@ let lastAckData: any;
   function onNewEpoch() {
     epochCount++;
     setTimeout(() => {
+      lastSurvivors = world.champions;
       startNewWorld();
     }, 300);
   }

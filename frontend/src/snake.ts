@@ -12,6 +12,8 @@ export class Snake implements GameObject {
   energyLevel = 1000;
   energyIntake = 0;
   dead: boolean = false;
+  createdAt: number;
+  diedAt: number = 0;
 
   tail: any[] = [];
 
@@ -24,15 +26,21 @@ export class Snake implements GameObject {
   ) {
     this.velocity.x = 0;
     this.velocity.y = 0;
+    this.createdAt = Date.now();
   }
 
   updateVelocity(newVelocity: Vector): void {
     this.velocity = newVelocity;
   }
 
+  die() {
+    this.dead = true;
+    this.diedAt = Date.now();
+  }
+
   update(): void {
     if (this.energyLevel <= 0) {
-      this.dead = true;
+      this.die();
     }
 
     if (this.dead) {
@@ -94,6 +102,14 @@ export class Snake implements GameObject {
     this.energyLevel += food.value;
     this.energyIntake += food.value;
     food.dead = true;
+  }
+
+  getLifespan(): string {
+    if (this.dead) {
+      return String(Math.floor((this.diedAt - this.createdAt) / 1000));
+    } else {
+      return '...';
+    }
   }
 
   private drawCircle(context: CanvasRenderingContext2D, x: number, y: number, color: string, size: number) {

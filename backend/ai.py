@@ -210,9 +210,9 @@ def predSnakeNets(model,weights,inputArray_, auxInput_):
 
 def reproduceSnake(model,weightsDict,parentSnake,childSnake,mutationRate):
      '''copys snake net from parent Snake, mutates it and saves it as a new snake net'''
-     weights =weightsDict[parentSnake]
+     weights = weightsDict[parentSnake]
      model = mutateWeights(model,weights,mutationRate)
-     model.save('{}{}.h5'.format(FilePath ,childSnake))
+     model.save('{}{}.h5'.format(FilePath, childSnake))
 
 
 #create inputs&run pred
@@ -292,7 +292,7 @@ async def communication(websocket, path):
             #create new clone of parent
             parentSnake = message["data"]["parentId"]
             childSnake = message["data"]["childId"]
-            reproduceSnake(parentSnake,childSnake,mutationRate)
+            reproduceSnake(model, weightsDict, parentSnake, childSnake, mutationRate)
             await sendMessage(websocket, message["messageId"], "ack")
 
         elif "snakes" == message["type"]:
@@ -328,7 +328,7 @@ async def communication(websocket, path):
                 if debugMode:
                     print("new epoch...")
                 snakesAliveOld = snakesAlive
-                recreateSnakeNets(model,df['snakeId'],weightsDict,snakesAliveOld,mutationRate)
+                recreateSnakeNets(model, df['snakeId'], weightsDict, snakesAliveOld, mutationRate)
 
                 await sendMessage(websocket, message["messageId"], "ack", snakesAliveOld.tolist())
                 newEpoch = False
