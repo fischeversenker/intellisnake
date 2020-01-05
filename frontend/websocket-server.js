@@ -6,20 +6,21 @@ wss.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
     const data = JSON.parse(message);
     console.log(`[SERVER]: <<< received message of type ${data.type} and ID ${data.messageId}`);
-    if (data.type === 'start' || data.type === 'epoch' || data.type === 'reproduce') {
+    if (data.type === 'generation' || data.type === 'reproduce') {
       setTimeout(() => {
         ws.send(JSON.stringify({ messageId: data.messageId, type: 'ack', data: {} }));
-      }, 1500);
+      }, 2000);
     } else {
       const ids = Object.keys(data.data);
       const resultData = ids.map(id => ({ [id]: [Math.random() - 0.5, Math.random() - 0.5] })).reduce((acc, pos) => ({...acc, ...pos}), {});
+
       setTimeout(() => {
         ws.send(JSON.stringify({
           messageId: data.messageId,
           type: 'snakes',
           data: resultData,
         }));
-      }, 2000);
+      }, 20);
     }
   });
 });

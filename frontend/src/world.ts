@@ -1,14 +1,27 @@
 import { Food } from "./food.js";
 import { Snake } from "./snake.js";
 import { GameObject, GameObjectType } from "./utils.js";
+import { GENERATION_DURATION_MS } from "./app.js";
 
 const AI_CALL_FREQUENCY = 10;
-const EPOCH_SNAKE_COUNT = 10;
-const SNAKE_REPRODUCTION_MIN_EL = 1500;
+const GENERATION_SNAKE_COUNT = 10;
 
 let foodCount = 0;
 let worldCount = 0;
 let messageCount = 0;
+
+export enum MessageType {
+  'ACK' = 'ack',
+  'DATA' = 'data',
+  'GENERATION' = 'generation',
+  'ERROR' = 'error',
+}
+
+export type Message = {
+  messageId: number;
+  type: MessageType;
+  data?: any;
+}
 
 export class World {
 
@@ -23,6 +36,7 @@ export class World {
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
   private broken = false;
+  private generationEndsTimeout = -1;
 
   champions: Snake[] = [];
 
@@ -31,13 +45,13 @@ export class World {
     public context: CanvasRenderingContext2D,
     private webSocket: WebSocket,
     private onNewEpoch: Function,
-    public epochCount: number = 0,
+    public generationCount: number = 0,
   ) {
     this.width = canvas.width;
     this.height = canvas.height;
 
     // add snakes
-    for (let i = 0; i < EPOCH_SNAKE_COUNT; i++) {
+    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
       this.addSnake();
     }
 
@@ -45,7 +59,7 @@ export class World {
     this.context.fillStyle = 'white';
     this.context.fillRect(0, 0, this.width, this.height);
 
-    this.sendWebSocketMessage('epoch', { snakeIds: this.snakes.map(snake => snake.id) });
+    this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => snake.id) });
     this.printWaiting();
   }
 
@@ -54,6 +68,12 @@ export class World {
       this.startTime = Date.now();
       this.running = true;
       requestAnimationFrame(() => this.update());
+
+      // make sure this generation ends after EPOCH_TIME_MS passed
+      this.generationEndsTimeout = setTimeout(() => {
+        console.log('[WORLD]: started new generation because time ran out');
+        this.onNewEpoch();
+      }, GENERATION_DURATION_MS);
     }
   }
 
@@ -62,11 +82,13 @@ export class World {
       this.broken = true;
     }
     this.running = false;
+    clearTimeout(this.generationEndsTimeout);
   }
 
   destroy() {
     this.stop();
     this.gameObjects = [];
+    clearTimeout(this.generationEndsTimeout);
   }
 
   update() {
@@ -79,6 +101,7 @@ export class World {
     }
 
     if (this.snakes.length === 0) {
+      console.log('[WORLD]: starting new generation because there are no snakes left');
       return this.onNewEpoch();
     }
 
@@ -86,8 +109,9 @@ export class World {
     this.context.fillStyle = 'white';
     this.context.fillRect(0, 0, this.width, this.height);
 
+    // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {
-      this.sendCurrentSnakeData();
+      this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
     }
 
     this.updateGameObjects();
@@ -134,18 +158,17 @@ export class World {
   }
 
   onWebSocketMessage(event: any): void {
-    const data = JSON.parse(event.data);
-    // console.log(`[WORLD]: <<< received data of type ${data.type}`);
+    const data = JSON.parse(event.data) as Message;
     switch (data.type) {
-      case 'ack':
+      case MessageType.ACK:
         if (!this.running) {
           this.begin();
         }
         break;
-      case 'error':
-        console.log(`[WORLD]: <<< was error: "${data.data}"`);
+      case MessageType.ERROR:
+        console.log(`[WORLD]: <<< received error: "${data.data}"`);
         break;
-      default:
+      case MessageType.DATA:
         for (let destination in data.data) {
           let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
           if (destinationGameObject && destinationGameObject.updateVelocity) {
@@ -154,13 +177,14 @@ export class World {
             destinationGameObject.updateVelocity({ x, y });
           }
         }
-        break;
+        break
+      default:
+        console.log(`[WORLD]: I don't know how to handle messages of type ${data.type}. Message was: ${data.data}`);
     }
     this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== data.messageId);
   }
 
-  private sendWebSocketMessage(type: string, data: any): void {
-    // console.log(`[WORLD]: >>> sending data of type ${type}`);
+  private sendWebSocketMessage(type: MessageType, data: any): void {
     this.webSocket.send(JSON.stringify({
       messageId: messageCount,
       type,
@@ -169,8 +193,8 @@ export class World {
     this.pendingWebSocketRequests.push(messageCount++);
   }
 
-  private sendCurrentSnakeData() {
-    const wsData: any = this.snakes.reduce((acc, snake) => ({
+  private currentSnakesData(): any {
+    return this.snakes.reduce((acc, snake) => ({
       ...acc,
       [snake.id]: {
         energyLevel: snake.energyLevel,
@@ -180,7 +204,6 @@ export class World {
         velocityY: snake.velocity.y,
       }
     }), {});
-    this.sendWebSocketMessage('snakes', wsData);
   }
 
   private addSnake(): Snake {
@@ -208,13 +231,6 @@ export class World {
             }
           }
         });
-
-        // check if reproduces
-        if ((gO as Snake).energyLevel > SNAKE_REPRODUCTION_MIN_EL) {
-          const newSnake = this.addSnake();
-          this.sendWebSocketMessage('reproduce', { parentId: gO.id, childId: newSnake.id });
-          newSnake.energyLevel = 1000;
-        }
       }
     });
 

@@ -1,7 +1,7 @@
 import { World } from './world.js';
 import { Snake } from './snake.js';
 
-export const EPOCH_TIME_MS = 30 * 1000;
+export const GENERATION_DURATION_MS = 30 * 1000;
 
 export class App {
   private canvas: HTMLCanvasElement;
@@ -9,7 +9,7 @@ export class App {
   private debuggerElement: HTMLElement;
   private webSocket: WebSocket;
   private world: World | null = null;
-  private epochCount = 0;
+  private generationCount = 0;
   private lastMessage = 0;
   private lastAckData: any;
   private lastSurvivors: Snake[] = [];
@@ -52,7 +52,7 @@ export class App {
       this.world.destroy();
     }
 
-    const newWorld = new World(this.canvas, this.context, this.webSocket, () => this.onNewEpoch(), this.epochCount);
+    const newWorld = new World(this.canvas, this.context, this.webSocket, () => this.onNewEpoch(), this.generationCount);
     this.world = newWorld;
 
     this.webSocket.onmessage = (event: MessageEvent) => {
@@ -64,47 +64,48 @@ export class App {
       this.world!.onWebSocketMessage(event);
     };
 
-    // TODO: seems buggy. Needs investigation
-    // make sure this epoch ends after EPOCH_TIME_MS passed
-    setTimeout(() => {
-      if (this.world === newWorld) {
-        this.onNewEpoch();
-      }
-    }, EPOCH_TIME_MS);
-    this.drawWorldInfo();
-
-  }
-
-  drawWorldInfo() {
-    if (this.world && this.world.running) {
-      const maxSnake = this.world.snakes.reduce((acc: any, snake) => {
-        if (!acc || snake.energyLevel > acc.energyLevel) {
-          return snake;
-        } else {
-          return acc;
-        }
-      }, null);
-      const survivorData = this.lastSurvivors
-        ? this.lastSurvivors.map(survivor => `LifeSpan: ${survivor.getLifespan()}s | EnergyIntake: ${survivor.energyIntake}`).join('\n')
-        : '';
-      this.debuggerElement.innerHTML = `
-<div>Epoch:</div><div>${this.world.epochCount}</div>
-<div>Snakes:</div><div>${this.world.snakes.length}</div>
-<div>Max EL:</div><div>${String(Math.floor(maxSnake && maxSnake.energyLevel ? maxSnake.energyLevel : 0))} (${maxSnake && maxSnake.id ? maxSnake.id : -1})</div>
-<div>Time left:</div><div>${Math.floor((EPOCH_TIME_MS - (Date.now() - this.world.startTime)) / 1000)}s</div>
-<div>Last message:</div><div>${Math.floor(Date.now() - this.lastMessage)}ms</div>
-<div>Last ack data:</div><div>${this.lastAckData ? Object.keys(this.lastAckData) : 'null'}</div>
-<div>Last survivors:</div><div>${survivorData}</div>
-`;
-
-    }
-
     requestAnimationFrame(() => this.drawWorldInfo());
   }
 
+  drawWorldInfo() {
+    if (this.world) {
+      let infoItems = [
+        `<div>Generation:</div><div>${this.world.generationCount}</div>`,
+      ];
+
+      const survivorData = this.lastSurvivors
+        ? this.lastSurvivors.map(survivor => `LifeSpan: ${survivor.getLifespan()}s | EnergyIntake: ${survivor.energyIntake}`).join('\n')
+        : '';
+      infoItems.push(`<div>Last survivors:</div><div>${survivorData}</div>`);
+
+      infoItems.push(
+        `<div>Last ack data:</div><div>${this.lastAckData ? Object.keys(this.lastAckData) : 'null'}</div>`,
+      );
+
+      if (this.world.running) {
+        infoItems.push(`<div>Snakes alive:</div><div>${this.world.snakes.length}</div>`);
+        const maxSnake = this.world.snakes.reduce((acc: any, snake) => {
+          if (!acc || snake.energyLevel > acc.energyLevel) {
+            return snake;
+          } else {
+            return acc;
+          }
+        }, null);
+
+        infoItems.push(
+          `<div>Max EL (snake):</div><div>${String(Math.floor(maxSnake && maxSnake.energyLevel ? maxSnake.energyLevel : 0))} (${maxSnake && maxSnake.id ? maxSnake.id : -1})</div>`,
+          `<div>Time left:</div><div>${Math.floor((GENERATION_DURATION_MS - (Date.now() - this.world.startTime)) / 1000)}s</div>`,
+          `<div>Last message:</div><div>${Math.floor(Date.now() - this.lastMessage)}ms</div>`,
+        );
+      }
+      this.debuggerElement.innerHTML = infoItems.join('');
+      requestAnimationFrame(() => this.drawWorldInfo());
+    }
+  }
+
   onNewEpoch() {
-    this.epochCount++;
     setTimeout(() => {
+      this.generationCount++;
       this.lastSurvivors = this.world!.champions;
       this.startNewWorld();
     }, 300);

@@ -11,7 +11,7 @@
     "serve": "live-server dist",
     "build": "cp -R ./public/* ./dist",
     "build:watch": "watch \"npm run build\" ./public",
-    "mock-server": "node ./websocket-server.js"
+    "mock-server": "nodemon ./websocket-server.js"
   },
   "keywords": [],
   "author": "",
