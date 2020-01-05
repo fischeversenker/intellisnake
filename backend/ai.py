@@ -29,7 +29,7 @@ import tensorflow
 
 
 #parameters
-FilePath = "./"
+FilePath = "./models/"
 width = 50 #width of input matrix
 height = 50 #height of input matrix
 levels = 4 # number of classes in matrix
