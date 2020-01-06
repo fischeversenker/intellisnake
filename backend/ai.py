@@ -11,7 +11,7 @@ import sys
 import asyncio
 import websockets
 import json
-
+import csv
 # suppress FutuerWarnings from Pandas
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -31,14 +31,20 @@ import random
 class AI():
     def __init__(self):
         self.FilePath = "./models/"
+        self.FilePathLog = "./log/"
         self.width = 50 #width of input matrix
         self.height = 50 #height of input matrix
         self.levels = 4 # number of classes in matrix
-        self.n_auxData = 3 #aux data
-        self.mutationRate = 0.5  #standard devivation for selection from normal distrubtion on Generation > 0" 
-        self.variance = 0.5 #standard devivation for selection from normal distrubtion on Generation = 0" 
+        self.n_auxData = 4 #aux data
+        self.mutationRate = 0.05 #standard devivation for selection from normal distrubtion on Generation > 0" 
+        self.variance = 1 #standard devivation for selection from normal distrubtion on Generation = 0" 
         self.network = []
-        self.survivorRate = 6
+        self.survivorRate = 8
+        self.totalEnergyIntake = dict({})
+        self.EnergyIntake = {}
+        self.generation = 0
+        
+
     '''Functions to extract data from messages,
     reshape inputs and create tensor'''
 
@@ -50,14 +56,35 @@ class AI():
         population = df['individuum'].unique()
         return df, population
 
+    def trackEnergyIntake(self,df):
+        currentEnergyIntake = dict(zip(df["individuum"],df["energyIntake"]))
+        
+        if not self.totalEnergyIntake:
+            self.EnergyIntake = dict(zip(df["individuum"],([0] * len(df))))
+        else:
+            for k, v in currentEnergyIntake.items():
+                self.EnergyIntake[k] = v - self.totalEnergyIntake.get(k, 0)
+            #map energyIntake to 0 or 1
+            for key, value in self.EnergyIntake.items():
+                if value > 0:
+                    self.EnergyIntake[key] = 1
+        self.totalEnergyIntake = currentEnergyIntake
+
+        return self
+
     #create input tensors
     '''extract values from dataframe and turns it arrays'''
+
     def createInputs(self, df,individuum):
         #subset df to single snake data and put values into input arrays
         df_subset = df[df["individuum"] == individuum]
-        #create inputs as numpy arrays
-        auxInput =np.asarray([df_subset["energyLevel"].values[0],df_subset["velocityX"].values[0],df_subset["velocityY"].values[0]])
+
+        IndividualEnergyIntake = self.EnergyIntake[str(individuum)]
+      
+        
+        auxInput =np.asarray([IndividualEnergyIntake,df_subset["energyLevel"].values[0],df_subset["velocityX"].values[0],df_subset["velocityY"].values[0]])
         inputArray =np.asarray(df_subset["matrix"].values[0])
+        inputArray = inputArray/self.levels
         return inputArray, auxInput
 
     ##reshaping
@@ -112,11 +139,10 @@ class AI():
     '''
     def initializeWeights(self, population):
         models= []
-        self.network = self.buildNetwork()
         for individuum in population: 
+            self.network = self.buildNetwork()
             weights = np.array(self.network.get_weights())
-            newWeights = self.mutateWeights(weights,self.variance)
-            models.append(newWeights)
+            models.append(weights)
         weightsDict = dict(zip(population,models))
         return weightsDict
 
@@ -138,6 +164,7 @@ class AI():
             modelWeights.append(np.array(newWeights))
 
         weightsDict = dict(zip(population,modelWeights))
+        self.generation = self.generation +1
         return weightsDict
 
     '''loads model from list with model name'''
@@ -149,6 +176,23 @@ class AI():
             models.append(np.array(network.get_weights()))
         return dict(zip(population,models))
 
+    def logging(self,fileName):
+        log =[self.generation,sum(self.totalEnergyIntake.values() )]
+        print("Generation: {}, Overall EnergyIntake: {}".format(log[0],log[1]))
+        try:
+            with open('{}{}.csv'.format(self.FilePathLog,fileName), 'a') as f:
+                writer = csv.writer(f)
+                writer.writerow(log)
+        except IOError:
+            with open('{}{}.csv'.format(self.FilePathLog,fileName), 'w') as f:
+                writer = csv.writer(f)
+                writer.writerow(log)
+        f.close()
+        
+
+
+
+
     '''uses network with inputweights for prediction, returns array'''
     def prediction(self,weights,inputArray_, auxInput_):
         self.network.set_weights(weights)
@@ -159,6 +203,7 @@ class AI():
     '''processes Inputs for each Individuum and returns a new output'''
     def populationOperator(self,population, df,weightsDict):
         outputDict = {}
+        self.trackEnergyIntake(df)
         for individuum in population:
             inputArray, auxInput = self.createInputs(df,individuum)
             inputArray_, auxInput_ = self.reshaping(inputArray,auxInput)

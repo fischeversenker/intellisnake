@@ -2,6 +2,7 @@ import json
 import websockets
 import asyncio
 import os
+import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from ai import AI
@@ -19,6 +20,7 @@ class WebSocketServer:
         self.weightsDict = {}
         self.model = []
         self.population = []
+        self.session = ""
 
     def start(self):
         print("server running...")
@@ -40,6 +42,7 @@ class WebSocketServer:
 
                 self.population = list(messageData["snakeIds"])
                 self.weightsDict = self.ai.initializeWeights(self.population)
+                self.session = str(time.time())
                 if DEBUG_MODE:
                     print("done initializeWeights")
                 await self.sendMessage(websocket, messageId, "ack", data = {})
@@ -47,12 +50,14 @@ class WebSocketServer:
             else:
                 if DEBUG_MODE:
                     print("new generation...")
+                self.ai.logging(self.session)
                 survivors = self.population
                 self.population = list(messageData["snakeIds"])
                 self.weightsDict = self.ai.reinitializeWeights(self.population,survivors,self.weightsDict)
                 
                 if DEBUG_MODE:
                     print("new weights loaded...")
+                print(survivors)
                 await self.sendMessage(websocket, messageId, "ack", survivors.tolist())
 
         elif messageType == "data":
