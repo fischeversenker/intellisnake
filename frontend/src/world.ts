@@ -119,7 +119,7 @@ export class World {
     this.updateGameObjects();
 
     if (Math.random() > 0.99) {
-      this.addGameObject(new Food(String(foodCount++), Math.abs((Math.random()-0.5)) * this.width, Math.abs((Math.random()-0.5)) * this.height));
+      this.addGameObject(new Food(String(foodCount++), this.sampleNormalDistribution() * this.width, this.sampleNormalDistribution() * this.height));
     }
 
     this.tickCount++;
@@ -189,7 +189,14 @@ export class World {
     }
     this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== data.messageId);
   }
-
+  
+  private sampleNormalDistribution(): number {
+      const u = Math.random(), v = Math.random();
+      let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+      num = num / 10.0 + 0.5; // Translate to 0 -> 1
+      if (num > 1 || num < 0) return this.sampleNormalDistribution(); // resample between 0 and 1
+      return num;
+  }
   private sendWebSocketMessage(type: MessageType, data: any): void {
     this.webSocket.send(JSON.stringify({
       messageId: messageCount,
