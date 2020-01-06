@@ -1,29 +1,16 @@
+import { GENERATION_DURATION_MS } from "./app.js";
 import { Food } from "./food.js";
 import { Snake } from "./snake.js";
 import { GameObject, GameObjectType } from "./utils.js";
-import { GENERATION_DURATION_MS } from "./app.js";
+import { Message, MessageListener, MessageType, Websocket } from "./websocket.js";
 
 const AI_CALL_FREQUENCY = 10;
 const GENERATION_SNAKE_COUNT = 10;
 
 let foodCount = 0;
 let worldCount = 0;
-let messageCount = 0;
 
-export enum MessageType {
-  'ACK' = 'ack',
-  'DATA' = 'data',
-  'GENERATION' = 'generation',
-  'ERROR' = 'error',
-}
-
-export type Message = {
-  messageId: number;
-  type: MessageType;
-  data?: any;
-}
-
-export class World {
+export class World implements MessageListener {
 
   running: boolean = false;
   width: number;
@@ -32,6 +19,7 @@ export class World {
   id = worldCount++;
   startTime: number = 0;
 
+  private websocket: Websocket;
   private pendingWebSocketRequests: number[] = [];
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
@@ -43,7 +31,6 @@ export class World {
   constructor(
     public canvas: HTMLCanvasElement,
     public context: CanvasRenderingContext2D,
-    private webSocket: WebSocket,
     private onNewEpoch: Function,
     public generationCount: number = 0,
   ) {
@@ -58,6 +45,9 @@ export class World {
     // clear canvas
     this.context.fillStyle = 'white';
     this.context.fillRect(0, 0, this.width, this.height);
+
+    this.websocket = Websocket.getInstance();
+    this.websocket.registerListener(this);
 
     this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => snake.id) });
     this.printWaiting();
@@ -88,6 +78,7 @@ export class World {
   destroy() {
     this.stop();
     this.gameObjects = [];
+    this.websocket.removeListener(this);
     clearTimeout(this.generationEndsTimeout);
   }
 
@@ -110,7 +101,7 @@ export class World {
     this.context.fillRect(0, 0, this.width, this.height);
 
     // send "snakes" message?
-    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.webSocket.readyState === WebSocket.OPEN && this.pendingWebSocketRequests.length === 0) {
+    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
       if (this.snakes.length > 0) {
         this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
       }
@@ -163,33 +154,32 @@ export class World {
     return this.gameObjects.filter(gO => gO.type !== GameObjectType.SNAKE);
   }
 
-  onWebSocketMessage(event: any): void {
-    const data = JSON.parse(event.data) as Message;
-    switch (data.type) {
+  onMessage(message: Message) {
+    switch (message.type) {
       case MessageType.ACK:
         if (!this.running) {
           this.begin();
         }
         break;
       case MessageType.ERROR:
-        console.log(`[WORLD]: <<< received error: "${data.data}"`);
+        console.log(`[WORLD]: <<< received error: "${message.data}"`);
         break;
       case MessageType.DATA:
-        for (let destination in data.data) {
+        for (let destination in message.data) {
           let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
           if (destinationGameObject && destinationGameObject.updateVelocity) {
-            const x = data.data[destinationGameObject.id][0];
-            const y = data.data[destinationGameObject.id][1];
+            const x = message.data[destinationGameObject.id][0];
+            const y = message.data[destinationGameObject.id][1];
             destinationGameObject.updateVelocity({ x, y });
           }
         }
         break
       default:
-        console.log(`[WORLD]: I don't know how to handle messages of type ${data.type}. Message was: ${data.data}`);
+        console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
     }
-    this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== data.messageId);
+    this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== message.messageId);
   }
-  
+
   private sampleNormalDistribution(): number {
       const u = Math.random(), v = Math.random();
       let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
@@ -198,12 +188,7 @@ export class World {
       return num;
   }
   private sendWebSocketMessage(type: MessageType, data: any): void {
-    this.webSocket.send(JSON.stringify({
-      messageId: messageCount,
-      type,
-      data,
-    }));
-    this.pendingWebSocketRequests.push(messageCount++);
+    this.pendingWebSocketRequests.push(this.websocket.send({ type, data }));
   }
 
   private currentSnakesData(): any {
