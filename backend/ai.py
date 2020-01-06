@@ -43,6 +43,7 @@ class AI():
         self.totalEnergyIntake = dict({})
         self.EnergyIntake = {}
         self.generation = 0
+        self.selectionRate = 0.1 # keep top percentage
         
 
     '''Functions to extract data from messages,
@@ -68,7 +69,7 @@ class AI():
             for key, value in self.EnergyIntake.items():
                 if value > 0:
                     self.EnergyIntake[key] = 1
-        self.totalEnergyIntake = currentEnergyIntake
+        self.totalEnergyIntake.update(currentEnergyIntake)
 
         return self
 
@@ -146,9 +147,19 @@ class AI():
         weightsDict = dict(zip(population,models))
         return weightsDict
 
+    def selectSurvivors(self):
+        s = pd.Series(self.totalEnergyIntake)
+        topN = int(round((len(s)*self.selectionRate),0))
+        print(topN)
+        survivor_df =s.nlargest(topN)
+        survivors =survivor_df.index.tolist()
+        print(self.totalEnergyIntake)
+        self.totalEnergyIntake = {}
+        return survivors
+
     ''' creates weights for individuums of next generation'''
     def reinitializeWeights(self,population,survivors,weightsDict):
-
+        survivors = self.selectSurvivors()
         nonSurvivors = list(set(population) - set(survivors))
         
         modelWeights = []
@@ -158,6 +169,8 @@ class AI():
             weights = None
             if len(modelWeights) > self.survivorRate and len(nonSurvivors) > 0:
                 weights = weightsDict[random.choice(nonSurvivors)]
+            elif len(survivors) == 0:
+                weights = weightsDict[random.choice(nonSurvivors)] 
             else:
                 weights = weightsDict[random.choice(survivors)]
             newWeights = self.mutateWeights(weights, self.mutationRate)
