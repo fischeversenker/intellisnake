@@ -54,11 +54,14 @@ class WebSocketServer:
                 survivors = self.population
                 self.population = list(messageData["snakeIds"])
                 self.weightsDict = self.ai.reinitializeWeights(self.population,survivors,self.weightsDict)
-                
+
                 if DEBUG_MODE:
                     print("new weights loaded...")
                 print(survivors)
-                await self.sendMessage(websocket, messageId, "ack", survivors.tolist())
+                if isinstance(survivors, list):
+                    await self.sendMessage(websocket, messageId, "ack", survivors)
+                else:
+                    await self.sendMessage(websocket, messageId, "ack", survivors.tolist())
 
         elif messageType == "data":
             if self.started:

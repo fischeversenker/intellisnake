@@ -1,13 +1,15 @@
-import { World } from './world.js';
 import { Snake } from './snake.js';
+import { Message, MessageListener, Websocket } from './websocket.js';
+import { World } from './world.js';
 
 export const GENERATION_DURATION_MS = 30 * 1000;
 
-export class App {
+export class App implements MessageListener {
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
   private debuggerElement: HTMLElement;
-  private webSocket: WebSocket;
+  private resetButton: HTMLElement;
+  private websocket: Websocket;
   private world: World | null = null;
   private generationCount = 0;
   private lastMessage = 0;
@@ -17,29 +19,47 @@ export class App {
   constructor(
     private width: number,
     private height: number,
+    private rootElement: HTMLElement,
   ) {
     this.canvas = document.createElement('canvas');
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
-    document.body.appendChild(this.canvas);
+    this.rootElement.appendChild(this.canvas);
 
     this.debuggerElement = document.createElement('div');
     this.debuggerElement.classList.add('debug');
-    document.body.appendChild(this.debuggerElement);
+    this.rootElement.appendChild(this.debuggerElement);
 
-    this.webSocket = new WebSocket('ws://localhost:8765') as WebSocket;
-    // this.webSocket = new WebSocket('ws://192.168.1.146:8765') as WebSocket;
+    this.resetButton = document.createElement('button');
+    this.resetButton.classList.add('reset-button');
+    this.resetButton.innerHTML = 'RESET (WIP)';
+    this.resetButton.addEventListener('click', (evt) => {
+      // this.reset();
+    });
+    this.rootElement.appendChild(this.rootElement);
+
+    this.websocket = Websocket.getInstance(evt => this.onWebsocketOpen(evt), evt => this.onWebsocketClose(evt));
+    this.websocket.registerListener(this);
+  }
+
+  onWebsocketOpen(evt: any): void {
+    this.startNewWorld();
+  }
+
+  onWebsocketClose(evt: any): void {
+    this.world!.stop(true);
+    console.log('[MAIN]:', evt);
+  }
+
+  onMessage(message: Message) {
+    this.lastMessage = Date.now();
+    if (message.type === 'ack' && message.data) {
+      this.lastAckData = message.data;
+    }
   }
 
   init() {
-
-    this.webSocket.onopen = () => this.startNewWorld();
-    this.webSocket.onclose = evt => {
-      this.world!.stop(true);
-      console.log('[MAIN]:', evt);
-    };
-
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r' && !evt.ctrlKey) {
         this.startNewWorld();
@@ -52,17 +72,8 @@ export class App {
       this.world.destroy();
     }
 
-    const newWorld = new World(this.canvas, this.context, this.webSocket, () => this.onNewEpoch(), this.generationCount);
+    const newWorld = new World(this.canvas, this.context, () => this.onNewEpoch(), this.generationCount);
     this.world = newWorld;
-
-    this.webSocket.onmessage = (event: MessageEvent) => {
-      this.lastMessage = Date.now();
-      const data = JSON.parse(event.data);
-      if (data.type === 'ack' && data.data) {
-        this.lastAckData = data.data;
-      }
-      this.world!.onWebSocketMessage(event);
-    };
 
     requestAnimationFrame(() => this.drawWorldInfo());
   }
