@@ -82,10 +82,8 @@ class AI():
 
         #combine CNN Output with metaInput
         x = concatenate([CNNout, auxiliaryInput])
-
         #stack a deep densely-connected network on top
-        x = Dense(8, activation='relu')(x)
-       
+        x = Dense(8, activation='relu')(x) 
         dir_x = Dense(2, activation='relu')(x)
         velocity_x = Dense(2, activation='relu')(x)
 
