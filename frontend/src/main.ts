@@ -7,7 +7,8 @@ export const CANVAS_HEIGHT = 100;
 
   document.addEventListener('DOMContentLoaded', () => {
 
-    const app = new App(CANVAS_WIDTH, CANVAS_HEIGHT);
+    const mainElement = document.querySelector('#main') as HTMLElement;
+    const app = new App(CANVAS_WIDTH, CANVAS_HEIGHT, mainElement);
     app.init();
   });
 
