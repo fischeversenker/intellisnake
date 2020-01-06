@@ -78,9 +78,6 @@ class AI():
         #CNN Network for processing matrix Data
         x = Conv2D(32, (3, 3), padding='same')(mainInput)
         x = MaxPooling2D((2, 2))(x)
-        x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
-        x = MaxPooling2D((2, 2), padding='same')(x)
-        x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
         CNNout = Flatten()(x)
 
         #combine CNN Output with metaInput
@@ -88,8 +85,7 @@ class AI():
 
         #stack a deep densely-connected network on top
         x = Dense(8, activation='relu')(x)
-        x = Dense(8, activation='relu')(x)
-        x = Dense(4, activation='relu')(x)
+       
         dir_x = Dense(2, activation='relu')(x)
         velocity_x = Dense(2, activation='relu')(x)
 
