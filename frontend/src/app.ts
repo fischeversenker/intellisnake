@@ -37,7 +37,7 @@ export class App implements MessageListener {
     this.resetButton.addEventListener('click', (evt) => {
       // this.reset();
     });
-    this.rootElement.appendChild(this.rootElement);
+    this.rootElement.appendChild(this.resetButton);
 
     this.websocket = Websocket.getInstance(evt => this.onWebsocketOpen(evt), evt => this.onWebsocketClose(evt));
     this.websocket.registerListener(this);
