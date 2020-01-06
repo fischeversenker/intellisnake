@@ -226,19 +226,27 @@ export class World {
   }
 
   private updateGameObjects() {
-    this.gameObjects.forEach(gO => {
-      gO.update();
-      gO.draw(this.context);
+    this.nonSnakes.forEach(nonSnake => {
+      nonSnake.update();
+      nonSnake.draw(this.context);
     });
 
     this.snakes.forEach(snake => {
+      let moves = true;
       this.nonSnakes.forEach(nonSnake => {
         if (snake.collidesWith(nonSnake)) {
-          if (nonSnake.type === GameObjectType.FOOD) {
-            snake.eat(nonSnake as Food);
-          }
+          snake.eat(nonSnake as Food);
         }
       });
+
+      this.snakes.filter(otherSnake => otherSnake !== snake).forEach(otherSnake => {
+        if (snake.nextStepCollidesWith(otherSnake) && otherSnake.isMoving) {
+          moves = false;
+        }
+      });
+
+      snake.update(moves);
+      snake.draw(this.context);
     });
 
     this.gameObjects = this.gameObjects.filter(gO => !gO.dead);
