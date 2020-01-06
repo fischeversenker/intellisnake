@@ -35,10 +35,10 @@ class AI():
         self.height = 50 #height of input matrix
         self.levels = 4 # number of classes in matrix
         self.n_auxData = 3 #aux data
-        self.mutationRate = 0.1  #standard devivation for selection from normal distrubtion on Generation > 0" 
-        self.variance = 0.9 #standard devivation for selection from normal distrubtion on Generation = 0" 
+        self.mutationRate = 0.5  #standard devivation for selection from normal distrubtion on Generation > 0" 
+        self.variance = 0.5 #standard devivation for selection from normal distrubtion on Generation = 0" 
         self.network = []
-        self.survivorRate = 9
+        self.survivorRate = 6
     '''Functions to extract data from messages,
     reshape inputs and create tensor'''
 
@@ -137,7 +137,7 @@ class AI():
         for id_ in population:
 
             weights = None
-            if len(modelWeights) > self.survivorRate:
+            if len(modelWeights) > self.survivorRate and len(nonSurvivors) > 0:
                 weights = weightsDict[random.choice(nonSurvivors)]
             else:
                 weights = weightsDict[random.choice(survivors)]
