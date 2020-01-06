@@ -79,7 +79,6 @@ class AI():
         x = Conv2D(32, (3, 3), padding='same')(mainInput)
         x = MaxPooling2D((2, 2))(x)
         CNNout = Flatten()(x)
-
         #combine CNN Output with metaInput
         x = concatenate([CNNout, auxiliaryInput])
         #stack a deep densely-connected network on top
