@@ -1,7 +1,7 @@
 import { Food } from "./food.js";
 import { GameObject, GameObjectType, Vector } from "./utils.js";
 
-export const SNAKE_LENGTH = 200;
+export const SNAKE_LENGTH = 50;
 
 export class Snake implements GameObject {
 
