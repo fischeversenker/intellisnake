@@ -5,7 +5,7 @@ import { GameObject, GameObjectType } from "./utils.js";
 import { Message, MessageListener, MessageType, Websocket } from "./websocket.js";
 
 const AI_CALL_FREQUENCY = 10;
-const GENERATION_SNAKE_COUNT = 10;
+const GENERATION_SNAKE_COUNT = 20;
 
 let foodCount = 0;
 let worldCount = 0;
@@ -58,12 +58,6 @@ export class World implements MessageListener {
       this.startTime = Date.now();
       this.running = true;
       requestAnimationFrame(() => this.update());
-
-      // make sure this generation ends after EPOCH_TIME_MS passed
-      this.generationEndsTimeout = setTimeout(() => {
-        console.log('[WORLD]: started new generation because time ran out');
-        this.onNewEpoch();
-      }, GENERATION_DURATION_MS);
     }
   }
 
@@ -72,14 +66,12 @@ export class World implements MessageListener {
       this.broken = true;
     }
     this.running = false;
-    clearTimeout(this.generationEndsTimeout);
   }
 
   destroy() {
     this.stop();
     this.gameObjects = [];
     this.websocket.removeListener(this);
-    clearTimeout(this.generationEndsTimeout);
   }
 
   update() {
@@ -89,6 +81,11 @@ export class World implements MessageListener {
 
     if (!this.running) {
       return this.printWaiting();
+    }
+
+    if (Date.now() - this.startTime > GENERATION_DURATION_MS) {
+      console.log('[WORLD]: started new generation because time ran out');
+      return this.onNewEpoch();
     }
 
     if (this.snakes.length === 0) {
