@@ -3,11 +3,11 @@ import websockets
 import asyncio
 import os
 import time
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 from ai import AI
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 class WebSocketServer:
@@ -16,11 +16,15 @@ class WebSocketServer:
     def __init__(self):
         self.ai = AI()
         self.started = False
+        self.reload = False
         self.snakesAlive = []
         self.weightsDict = {}
         self.model = []
         self.population = []
         self.session = ""
+        self.saveEveryXGenerations = 2
+        self.saveCounter = 0
+        self.generation = 0
 
     def start(self):
         print("server running...")
@@ -36,7 +40,7 @@ class WebSocketServer:
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
         if messageType == "generation":
-            if not self.started:
+            if not self.started and not self.reload:
                 if DEBUG_MODE:
                     print("starting...")
 
@@ -47,17 +51,41 @@ class WebSocketServer:
                     print("done initializeWeights")
                 await self.sendMessage(websocket, messageId, "ack", data = {})
                 self.started = True
+
+            if not self.started and self.reload:
+                if DEBUG_MODE:
+                    print("reloading...")
+
+                self.population = list(messageData["snakeIds"])
+                self.weightsDict = self.ai.loadModel(self.population)
+                self.session = str(time.time())
+                if DEBUG_MODE:
+                    print("done reloading Weights")
+                await self.sendMessage(websocket, messageId, "ack", data = {})
+                self.started = True
+
             else:
                 if DEBUG_MODE:
                     print("new generation...")
                 self.ai.logging(self.session)
-                survivors = self.population
                 self.population = list(messageData["snakeIds"])
-                self.weightsDict = self.ai.reinitializeWeights(self.population,survivors,self.weightsDict)
+                if self.generation == 0:
+                    survivors = self.population
+                else:
+                    survivors = self.ai.selectSurvivors()
+                    self.weightsDict = self.ai.reinitializeWeights(self.population,survivors,self.weightsDict)
+                self.generation = self.generation +1
+                self.saveCounter = self.saveCounter +1
+                if self.saveCounter >= self.saveEveryXGenerations:
+                    for individuum in self.population:
+                        self.ai.saveModel(individuum,self.weightsDict[individuum])
+                    self.saveCounter = 0
+                    if DEBUG_MODE:
+                        print("models saved to file...")
 
                 if DEBUG_MODE:
                     print("new weights loaded...")
-                print(survivors)
+
                 if isinstance(survivors, list):
                     await self.sendMessage(websocket, messageId, "ack", survivors)
                 else:
@@ -67,8 +95,8 @@ class WebSocketServer:
             if self.started:
                 if DEBUG_MODE:
                     print("predicting...")
-                df,self.population = self.ai.df_construct(messageData)
-                output_json = self.ai.populationOperator(self.population,df,self.weightsDict)
+                df, self.population = self.ai.df_construct(messageData)
+                output_json = self.ai.populationOperator(self.population, df ,self.weightsDict)
                 await self.sendMessage(websocket, messageId, "data", output_json)
             else:
                 await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
