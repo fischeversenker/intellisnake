@@ -40,7 +40,7 @@ class AI():
         self.mutationRate = 0.5 #standard devivation for selection from normal distrubtion on Generation > 0" 
         self.variance = 1 #standard devivation for selection from normal distrubtion on Generation = 0" 
         self.network = []
-        self.nonSurvivorRate = 0.0 #
+        self.nonSurvivorRate = 0.05 #
         self.selectionRate = 0.25 # keep top percentage
         self.totalEnergyIntake = dict({})
         self.EnergyIntake = {}
@@ -95,13 +95,13 @@ class AI():
         x = MaxPooling2D((2, 2))(x)
         x = Conv2D(32, (3, 3), padding='same',activation ='relu')(mainInput)
         x= Flatten()(x)
-        CNNout= Dense(units = 4, activation = 'relu')(x)
+        CNNout= Dense(units = 16, activation = 'relu')(x)
         #combine CNN Output with metaInput
         x = concatenate([CNNout, auxiliaryInput])
         #stack a deep densely-connected network on top
         x = Dense(8, activation='relu')(x) 
-        dir_x = Dense(2, activation='relu')(x)
-        velocity_x = Dense(2, activation='relu')(x)
+        dir_x = Dense(1, activation='relu')(x)
+        velocity_x = Dense(1, activation='relu')(x)
 
         #define output
         dir_output = Dense(1, activation='tanh', name='dir_output')(velocity_x)
@@ -148,7 +148,7 @@ class AI():
         try:
              proba = self.softmax(selectionFeature) 
         except:
-            survivors = random.choice(oldPopulation,k=len(oldPopulation))
+            survivors = random.choices(oldPopulation,k=len(oldPopulation))
         else:
             survivors = list(np.random.choice(oldPopulation, (len(oldPopulation)-int(round(len(oldPopulation)*self.nonSurvivorRate))), p=proba,replace=True))
         nonSurvivors = list(set(oldPopulation) - set(survivors))
