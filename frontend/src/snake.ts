@@ -87,7 +87,10 @@ export class Snake implements GameObject {
     });
 
     this.drawCircle(context, this.x, this.y, color, this.size);
+  }
 
+  // not used currently
+  drawInfo(context: CanvasRenderingContext2D): void {
     context.fillStyle = 'black';
     context.font = '8px Arial';
     context.fillText(`Id: ${this.id}`, this.x + this.size, this.y);
