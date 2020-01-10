@@ -296,7 +296,7 @@ class AI():
     def loadModel(self, population):
         files_path = os.path.join(self.FilePathModels , '*')
         files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
-        self.network= load_model('{}{}'.format(self.FilePathModels,"autoencoder.h5"))) 
+        self.network= load_model('{}{}'.format(self.FilePathModels,"autoencoder.h5"))
         models = []
         if files:
             for i in range(len(population)):
