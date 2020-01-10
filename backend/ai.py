@@ -296,11 +296,11 @@ class AI():
     def loadModel(self, population):
         files_path = os.path.join(self.FilePathModels , '*')
         files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
-        self.network= load_model('{}{}'.format(self.FilePathModels,"autoencoder.h5"))
+        self.network= load_model('{}{}'.format(self.FilePathModels,"autoencoder.h5")) 
         models = []
         if files:
             for i in range(len(population)):
-                self.network= load_model('{}'.format(random.choice(files)))self.network= load_model('{}'.format(random.choice(files)))
+                self.network= load_model('{}'.format(random.choice(files)))
                 models.append(np.array(self.network.get_weights()))
             return dict(zip(population,models))
 
