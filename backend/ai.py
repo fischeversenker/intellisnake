@@ -39,7 +39,7 @@ class AI():
         self.height = 100 #height of input matrix
         self.levels = 4 # number of classes in matrix
         self.n_auxData = 4 #aux data
-        self.mutationRate = 0.005  #standard devivation for selection from normal distrubtion on Generation > 0" 
+        self.mutationRate = 2  #standard devivation for selection from normal distrubtion on Generation > 0" 
         self.network = []
         self.autoencoder = []
         self.sharedLayers = 4
@@ -76,7 +76,6 @@ class AI():
         IndividualEnergyIntake =self.totalEnergyIntake[individuum]
         auxInput =self.getAuxInput(IndividualEnergyIntake,df_subset["velocityX"].values[0],df_subset["velocityY"].values[0],df_subset["energyLevel"].values[0])
         inputArray =np.asarray(df_subset["matrix"].values[0])
-        print(np.unique(inputArray))
         inputArray = inputArray/self.levels
         return inputArray, auxInput
 
@@ -129,16 +128,21 @@ class AI():
         
         x = Flatten()(encoder)
         x = Dense(units= 16, activation = 'relu')(x)
-        CNNout = Dense(units = 16, activation = 'softmax')(x)
-        
-        #combine CNN Output with metaInput
-        aux = Dense(2, activation='sigmoid')(auxiliaryInput) 
-        x = concatenate([CNNout, aux])
-        #stack a deep densely-connected network on top
         x = Dense(16, activation='sigmoid')(x) 
         x = Dense(8, activation='sigmoid')(x) 
         dir_x = Dense(2, activation='sigmoid')(x)
         velocity_x = Dense(2, activation='sigmoid')(x)
+
+        #CNNout = Dense(units = 2, activation = 'softmax')(x)
+        
+        #combine CNN Output with metaInput
+        #aux = Dense(2, activation='sigmoid')(auxiliaryInput) 
+        #x = concatenate([CNNout, aux])
+        #stack a deep densely-connected network on top
+        #x = Dense(16, activation='sigmoid')(x) 
+        #x = Dense(8, activation='sigmoid')(x) 
+        #dir_x = Dense(2, activation='sigmoid')(x)
+        #velocity_x = Dense(2, activation='sigmoid')(x)
 
         #define output
         dir_output = Dense(1, activation='tanh', name='dir_output')(velocity_x)
@@ -171,8 +175,7 @@ class AI():
 
     def mutateWeights(self, weights, rate):
         mutator = np.random.normal(loc = 0, scale = rate, size = 1)
-    
-        return weights + mutator*weights
+        return weights*mutator 
 
     def softmax(self,x):
         x= np.asarray(x)
@@ -225,7 +228,7 @@ class AI():
 
         self.totalEnergyIntake = {}
         modelWeights = []    
-       
+        print(survivors)
         for i in range(len(population)):
             weights = weightsDict[survivors[i]]
             weights = np.array(self.network.get_weights())
@@ -251,23 +254,24 @@ class AI():
                 self.batchSize = len(self.trainData)
             self.autoencoder.fit(np.array(trainX), np.array(trainX),epochs=5,shuffle=True,batch_size=self.batchSize)
             self.autoencoder.save("{}autoencoder.h5".format(self.FilePathModels))
-            decoded_imgs = self.autoencoder.predict(np.array(testX))
-            n = 10
-            plt.figure(figsize=(20, 4))
-            for i in range(n):
-                  ax = plt.subplot(2, n, i+1)
-                  plt.imshow(testX[i].reshape(100, 100))
-                  plt.gray()
-                  ax.get_xaxis().set_visible(False)
-                  ax.get_yaxis().set_visible(False)
+            if self.Counter == 0:
+                decoded_imgs = self.autoencoder.predict(np.array(testX))
+                n = 10
+                plt.figure(figsize=(20, 4))
+                for i in range(n):
+                    ax = plt.subplot(2, n, i+1)
+                    plt.imshow(testX[i].reshape(100, 100))
+                    plt.gray()
+                    ax.get_xaxis().set_visible(False)
+                    ax.get_yaxis().set_visible(False)
 
-                # display reconstruction
-                  ax = plt.subplot(2, n, i+1 + n)
-                  plt.imshow(decoded_imgs[i].reshape(100, 100))
-                  plt.gray()
-                  ax.get_xaxis().set_visible(False)
-                  ax.get_yaxis().set_visible(False)
-                  plt.savefig("{}{}".format(self.FilePathPlot,"autoencoder.png"))
+                    # display reconstruction
+                    ax = plt.subplot(2, n, i+1 + n)
+                    plt.imshow(decoded_imgs[i].reshape(100, 100))
+                    plt.gray()
+                    ax.get_xaxis().set_visible(False)
+                    ax.get_yaxis().set_visible(False)
+                    plt.savefig("{}{}".format(self.FilePathPlot,"autoencoder.png"))
             #plt.show()
    
 
@@ -295,8 +299,7 @@ class AI():
     '''loads model from list with model name'''
     def loadModel(self, population):
         files_path = os.path.join(self.FilePathModels , '*')
-        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
-        self.network= load_model('{}{}'.format(self.FilePathModels,"autoencoder.h5")) 
+        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True) 
         models = []
         if files:
             for i in range(len(population)):
