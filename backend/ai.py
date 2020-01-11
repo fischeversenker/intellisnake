@@ -166,7 +166,7 @@ class AI():
         else:
             for k, v in currentEnergyIntake.items():
                 self.EnergyIntake[k] = v - self.totalEnergyIntake.get(k, 0)
-            #map energyIntake to 0 or 1
+            #map energyIntake to 0 or 1  
             for key, value in self.EnergyIntake.items():
                 if value > 0:
                     self.EnergyIntake[key] = 1
