@@ -133,18 +133,6 @@ class AI():
         dir_x = Dense(2, activation='sigmoid')(x)
         velocity_x = Dense(2, activation='sigmoid')(x)
 
-        #CNNout = Dense(units = 2, activation = 'softmax')(x)
-        
-        #combine CNN Output with metaInput
-        #aux = Dense(2, activation='sigmoid')(auxiliaryInput) 
-        #x = concatenate([CNNout, aux])
-        #stack a deep densely-connected network on top
-        #x = Dense(16, activation='sigmoid')(x) 
-        #x = Dense(8, activation='sigmoid')(x) 
-        #dir_x = Dense(2, activation='sigmoid')(x)
-        #velocity_x = Dense(2, activation='sigmoid')(x)
-
-        #define output
         dir_output = Dense(1, activation='tanh', name='dir_output')(velocity_x)
         velocity_output = Dense(1, activation='tanh', name='velocity_output')(dir_x)
         network = Model(inputs=[mainInput, auxiliaryInput], outputs=[dir_output, velocity_output])
