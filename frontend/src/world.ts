@@ -97,11 +97,16 @@ export class World implements MessageListener {
     this.context.fillStyle = 'white';
     this.context.fillRect(0, 0, this.width, this.height);
 
-    this.updateGameObjects();
-
     if (Math.random() > 0.99) {
-      this.addGameObject(new Food(String(foodCount++), this.sampleNormalDistribution() * this.width, this.sampleNormalDistribution() * this.height));
+      const food = new Food(
+        String(foodCount++),
+        this.sampleNormalDistribution() * this.width,
+        this.sampleNormalDistribution() * this.height
+      );
+      this.addGameObject(food);
     }
+
+    this.updateGameObjects();
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
