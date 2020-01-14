@@ -18,9 +18,10 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import pandas as pd
-from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten,concatenate,UpSampling2D
+from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten, concatenate, UpSampling2D, BatchNormalization
 from keras.models import Model,load_model
 import numpy as np
+import math
 import time
 import gc
 from keras.backend.tensorflow_backend import set_session
@@ -39,17 +40,17 @@ class AI():
         self.height = 100 #height of input matrix
         self.levels = 4 # number of classes in matrix
         self.n_auxData = 4 #aux data
-        self.mutationRate = 2  #standard devivation for selection from normal distrubtion on Generation > 0" 
+        self.mutationRate = 2 #standard devivation for selection from normal distrubtion on Generation > 0" 
         self.network = []
         self.autoencoder = []
         self.sharedLayers = 4
-        self.nonSurvivorRate = 0.3 #
+        self.nonSurvivorRate = 0 #
         self.totalEnergyIntake = dict({})
         self.EnergyIntake = {}
         self.generation = 0
         self.Counter = 0
-        self.AdaptionFrequency = 100 
-        self.AdaptionRate = 0.5 
+        self.AdaptionFrequency = 10000 
+        self.AdaptionRate = 0.1 
         self.trainData = []
         self.batchSize = 128
         
@@ -125,16 +126,15 @@ class AI():
         encoder = MaxPooling2D((2, 2))(encoder)
         encoder = Conv2D(16, (3, 3), padding='same',activation ='relu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
-        
         x = Flatten()(encoder)
-        x = Dense(units= 16, activation = 'relu')(x)
-        x = Dense(16, activation='sigmoid')(x) 
-        x = Dense(8, activation='sigmoid')(x) 
-        dir_x = Dense(2, activation='sigmoid')(x)
-        velocity_x = Dense(2, activation='sigmoid')(x)
 
-        dir_output = Dense(1, activation='tanh', name='dir_output')(velocity_x)
-        velocity_output = Dense(1, activation='tanh', name='velocity_output')(dir_x)
+        x = Dense(units= 64, activation = 'selu')(x)
+        x = Dense(64, activation='selu')(x) 
+        x = Dense(64, activation='selu')(x) 
+        x = Dense(64, activation='selu')(x) 
+
+        dir_output = Dense(1, activation='tanh', name='dir_output')(x)
+        velocity_output = Dense(1, activation='tanh', name='velocity_output')(x)
         network = Model(inputs=[mainInput, auxiliaryInput], outputs=[dir_output, velocity_output])
         network.compile(optimizer='rmsprop', loss='binary_crossentropy',
                     loss_weights=[1., 0.2])
@@ -161,10 +161,20 @@ class AI():
         self.totalEnergyIntake.update(currentEnergyIntake)
         return self
 
-    def mutateWeights(self, weights, rate):
-        mutator = np.random.normal(loc = 0, scale = rate, size = 1)
-        return weights*mutator 
+    # def mutateWeights(self, weights, rate):
+    #     lower = 1/rate
+    #     upper = rate - lower
+    #     mutator = random.uniform(lower,upper)
+    #     return weights*mutator 
 
+    
+    def mutateWeights(self, weights, rate):
+        mutator = random.uniform(0,1)
+        if random.uniform(0,1) > 0.5:
+            return weights*mutator 
+        else:
+            return weights/mutator 
+    
     def softmax(self,x):
         x= np.asarray(x)
         e_x = np.exp(x - np.max(x))
@@ -216,7 +226,7 @@ class AI():
 
         self.totalEnergyIntake = {}
         modelWeights = []    
-        print(survivors)
+        print("Number of Survivors: {}".format(len(np.unique(survivors))))
         for i in range(len(population)):
             weights = weightsDict[survivors[i]]
             weights = np.array(self.network.get_weights())
@@ -240,7 +250,7 @@ class AI():
                 trainX = self.trainData
                 testX = trainX
                 self.batchSize = len(self.trainData)
-            self.autoencoder.fit(np.array(trainX), np.array(trainX),epochs=5,shuffle=True,batch_size=self.batchSize)
+            self.autoencoder.fit(np.array(trainX), np.array(trainX),epochs=10,shuffle=True,batch_size=self.batchSize)
             self.autoencoder.save("{}autoencoder.h5".format(self.FilePathModels))
             if self.Counter == 0:
                 decoded_imgs = self.autoencoder.predict(np.array(testX))
@@ -281,6 +291,9 @@ class AI():
             inputArray_, auxInput_ = self.reshaping(inputArray,auxInput)
             self.trainData.append(np.reshape(inputArray_,(100,100,1)))
             pred_ = self.prediction(weightsDict[individuum],inputArray_, auxInput_)
+            print("Raw Input: {}".format(inputArray))
+            print("Transformed Input: {}".format(inputArray_))
+            print("Prediction: {}".format(pred_))
             outputDict.update([(individuum,pred_)],)
         return outputDict 
 
