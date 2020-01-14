@@ -1,8 +1,8 @@
-import { GENERATION_DURATION_MS } from "./app.js";
-import { Food } from "./food.js";
-import { Snake } from "./snake.js";
-import { GameObject, GameObjectType } from "./utils.js";
-import { Message, MessageListener, MessageType, Websocket } from "./websocket.js";
+import { GENERATION_DURATION_MS } from "./app";
+import { Food } from "./food";
+import { Snake } from "./snake";
+import { GameObject, GameObjectType } from "./utils";
+import { Message, MessageListener, MessageType, Websocket } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
 const GENERATION_SNAKE_COUNT = 20;

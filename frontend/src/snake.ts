@@ -1,5 +1,5 @@
-import { Food } from "./food.js";
-import { GameObject, GameObjectType, Vector } from "./utils.js";
+import { Food } from "./food";
+import { GameObject, GameObjectType, Vector } from "./utils";
 
 export const SNAKE_LENGTH = 50;
 

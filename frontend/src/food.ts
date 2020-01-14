@@ -1,4 +1,4 @@
-import { GameObject, GameObjectType, Vector } from "./utils.js";
+import { GameObject, GameObjectType, Vector } from "./utils";
 
 const MAX_FOOD_AGE = 30 * 1000;
 

@@ -1,6 +1,6 @@
-import { Snake } from './snake.js';
-import { Message, MessageListener, Websocket } from './websocket.js';
-import { World } from './world.js';
+import { Snake } from './snake';
+import { Message, MessageListener, Websocket } from './websocket';
+import { World } from './world';
 
 export const GENERATION_DURATION_MS = 30 * 1000;
 

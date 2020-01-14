@@ -1,5 +1,5 @@
-import { App } from './app.js';
-import { Renderer } from './renderer.js';
+import { App } from './app';
+import { Renderer } from './renderer';
 
 export const CANVAS_WIDTH = 100;
 export const CANVAS_HEIGHT = 100;
