@@ -30,6 +30,7 @@ export class World implements MessageListener {
     private width: number,
     private height: number,
   ) {
+    console.log('[WORLD]: building new world...');
     Events.on(this.physics.engine, 'beforeUpdate', this.update);
     Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
 
@@ -44,6 +45,7 @@ export class World implements MessageListener {
     this.websocket.registerListener(this);
 
     this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => String(snake.id)) });
+    console.log('[WORLD]: ... ready');
   }
 
   begin() {
@@ -71,6 +73,7 @@ export class World implements MessageListener {
     if (Date.now() - this.startTime > GENERATION_DURATION_MS) {
       console.log('[WORLD]: started new generation because time ran out');
       this.stop();
+      this.champions = [...this.aliveSnakes];
       return this.onNewEpoch();
     }
 

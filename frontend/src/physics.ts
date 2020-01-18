@@ -99,8 +99,8 @@ export class Physics {
   }
 
   createSnakeBody(x: number, y: number, length: number): { head: Body, tail: Body[], constraints: Constraint[] } {
-    const snakeHeadSize = 5;
-    const snakeTailPieceSize = 4;
+    const snakeHeadSize = 10;
+    const snakeTailPieceSize = 8;
 
     // get an existing snake color or add a random one
     let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
@@ -151,7 +151,8 @@ export class Physics {
   }
 
   createFood(x: number, y: number = 500): Body {
-    const halo = Bodies.circle(x, y, 16, {
+    const foodSize = 24;
+    const halo = Bodies.circle(x, y, foodSize, {
       label: String(GameObjectType.FOOD),
       friction: 0,
       frictionAir: 0.4,
@@ -160,7 +161,7 @@ export class Physics {
         opacity: 0.1,
       },
     });
-    const foodBody = Bodies.rectangle(x, y, 8, 8, {
+    const foodBody = Bodies.rectangle(x, y, foodSize / 1.5, foodSize / 1.5, {
       label: String(GameObjectType.FOOD),
       friction: 0,
       frictionAir: 0.4,
