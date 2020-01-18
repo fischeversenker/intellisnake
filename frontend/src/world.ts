@@ -1,8 +1,10 @@
 import { GENERATION_DURATION_MS } from "./app";
-import { Food } from "./food";
+import { Physics } from "./physics";
 import { Snake } from "./snake";
 import { GameObject, GameObjectType } from "./utils";
 import { Message, MessageListener, MessageType, Websocket } from "./websocket";
+import { Events, Body, World as MWorld, Vector } from "matter-js";
+import { Food } from "./food";
 
 const AI_CALL_FREQUENCY = 10;
 const GENERATION_SNAKE_COUNT = 20;
@@ -12,9 +14,7 @@ let worldCount = 0;
 
 export class World implements MessageListener {
 
-  running: boolean = false;
-  width: number;
-  height: number;
+  physics: Physics;
 
   id = worldCount++;
   startTime: number = 0;
@@ -29,43 +29,66 @@ export class World implements MessageListener {
   champions: Snake[] = [];
 
   constructor(
-    public canvas: HTMLCanvasElement,
-    public context: CanvasRenderingContext2D,
     private onNewEpoch: Function,
     public generationCount: number = 0,
+    private width: number,
+    private height: number,
   ) {
-    this.width = canvas.width;
-    this.height = canvas.height;
+    const mainElement = document.querySelector('#main') as HTMLElement;
+    this.physics = new Physics(mainElement, this.width, this.height);
+
+    Events.on(this.physics.engine, 'beforeUpdate', () => this.update());
+    Events.on(this.physics.engine, 'collisionStart', (event) => {
+      const foodPairs = event.pairs.filter(pair => {
+        const aIsSnakeBIsFood = pair.bodyA.label === String(GameObjectType.SNAKE) && pair.bodyB.label === String(GameObjectType.FOOD);
+        const bIsSnakeAIsFood = pair.bodyA.label === String(GameObjectType.FOOD) && pair.bodyB.label === String(GameObjectType.SNAKE);
+        return aIsSnakeBIsFood || bIsSnakeAIsFood;
+      });
+
+      foodPairs.forEach(pair => {
+        let snake: Snake, snakeBody: Body, food: Food, foodBody: Body;
+
+        if (pair.bodyA.label === String(GameObjectType.FOOD)) {
+          foodBody = pair.bodyA;
+          snakeBody = pair.bodyB;
+        } else {
+          foodBody = pair.bodyB;
+          snakeBody = pair.bodyA;
+        }
+
+        food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id) as Food;
+        snake = this.snakes.find(snake => snake.id === snakeBody.id) as Snake;
+        if (snake && food) {
+          snake.eat(food);
+        }
+        MWorld.remove(this.physics.engine.world, foodBody);
+      });
+    });
 
     // add snakes
     for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
-      this.addSnake();
+      const snakeBody = this.physics.addRandomSnake();
+      const snake = new Snake(snakeBody.id, snakeBody);
+      this.gameObjects.push(snake);
     }
-
-    // clear canvas
-    this.context.fillStyle = 'white';
-    this.context.fillRect(0, 0, this.width, this.height);
 
     this.websocket = Websocket.getInstance();
     this.websocket.registerListener(this);
 
     this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => snake.id) });
-    this.printWaiting();
   }
 
   begin() {
-    if (this.context) {
-      this.startTime = Date.now();
-      this.running = true;
-      requestAnimationFrame(() => this.update());
-    }
+    this.startTime = Date.now();
+    this.physics.run();
+    this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
   }
 
   stop(broken = false) {
     if (broken) {
       this.broken = true;
     }
-    this.running = false;
+    this.physics.stop();
   }
 
   destroy() {
@@ -75,14 +98,6 @@ export class World implements MessageListener {
   }
 
   update() {
-    if (this.broken) {
-      return this.printBroken();
-    }
-
-    if (!this.running) {
-      return this.printWaiting();
-    }
-
     if (Date.now() - this.startTime > GENERATION_DURATION_MS) {
       console.log('[WORLD]: started new generation because time ran out');
       return this.onNewEpoch();
@@ -93,20 +108,13 @@ export class World implements MessageListener {
       return this.onNewEpoch();
     }
 
-    // clear canvas
-    this.context.fillStyle = 'white';
-    this.context.fillRect(0, 0, this.width, this.height);
-
     if (Math.random() > 0.99) {
-      const food = new Food(
-        String(foodCount++),
-        this.sampleNormalDistribution() * this.width,
-        this.sampleNormalDistribution() * this.height
-      );
-      this.addGameObject(food);
+      const x = this.sampleNormalDistribution() * this.width;
+      const y = this.sampleNormalDistribution() * this.height;
+      const foodBody = this.physics.addFood(x, y);
+      const food = new Food(foodBody.id, foodBody);
+      this.gameObjects.push(food);
     }
-
-    this.updateGameObjects();
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
@@ -116,36 +124,6 @@ export class World implements MessageListener {
     }
 
     this.tickCount++;
-    requestAnimationFrame(() => this.update());
-  }
-
-  addGameObject(gameObject: GameObject) {
-    this.gameObjects.push(gameObject);
-  }
-
-  toBitMatrix(gamObject: GameObject): number[] {
-    const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    const result = [];
-    for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
-      const x = (i / 4) % this.width;
-      const y = Math.floor((i / 4) / this.width);
-      const r = imageData.data[i];
-      const g = imageData.data[i + 1];
-      const b = imageData.data[i + 2];
-      const a = imageData.data[i + 3];
-      if (r > g && r > b) {
-        result.push(GameObjectType.FOOD);
-      } else if (g > r && g > b) {
-        if (gamObject.collidesWith({ x, y })) {
-          result.push(GameObjectType.ME);
-        } else {
-          result.push(gamObject.type);
-        }
-      } else {
-        result.push(GameObjectType.NONE);
-      }
-    }
-    return result;
   }
 
   get snakes(): Snake[] {
@@ -159,36 +137,39 @@ export class World implements MessageListener {
   onMessage(message: Message) {
     switch (message.type) {
       case MessageType.ACK:
-        if (!this.running) {
+        if (!this.physics.engine.enabled) {
           this.begin();
         }
         break;
       case MessageType.ERROR:
         console.log(`[WORLD]: <<< received error: "${message.data}"`);
+        this.stop();
         break;
       case MessageType.DATA:
         for (let destination in message.data) {
-          let destinationGameObject = this.gameObjects.find(gO => gO.id === destination);
+          let destinationGameObject = this.gameObjects.find(gO => Number(gO.id) === Number(destination));
           if (destinationGameObject && destinationGameObject.updateVelocity) {
             const x = message.data[destinationGameObject.id][0];
             const y = message.data[destinationGameObject.id][1];
-            destinationGameObject.updateVelocity({ x, y });
+            destinationGameObject.updateVelocity(Vector.create(x, y));
           }
         }
         break
       default:
         console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
     }
+
     this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== message.messageId);
   }
 
   private sampleNormalDistribution(): number {
-      const u = Math.random(), v = Math.random();
-      let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
-      num = num / 10.0 + 0.5; // Translate to 0 -> 1
-      if (num > 1 || num < 0) return this.sampleNormalDistribution(); // resample between 0 and 1
-      return num;
+    const u = Math.random(), v = Math.random();
+    let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+    num = num / 10.0 + 0.5; // Translate to 0 -> 1
+    if (num > 1 || num < 0) return this.sampleNormalDistribution(); // resample between 0 and 1
+    return num;
   }
+
   private sendWebSocketMessage(type: MessageType, data: any): void {
     this.pendingWebSocketRequests.push(this.websocket.send({ type, data }));
   }
@@ -200,65 +181,35 @@ export class World implements MessageListener {
         energyLevel: snake.energyLevel,
         energyIntake: snake.energyIntake,
         matrix: this.toBitMatrix(snake),
-        velocityX: snake.velocity.x,
-        velocityY: snake.velocity.y,
+        velocityX: snake.body.velocity.x,
+        velocityY: snake.body.velocity.y,
       }
     }), {});
   }
 
-  private addSnake(): Snake {
-    const newSnake = new Snake(String(this.snakes.length), Math.random() * this.width, Math.random() * this.height, this.width, this.height);
-    this.gameObjects.push(newSnake);
-    return newSnake;
+  private toBitMatrix(gamObject: GameObject): number[] {
+    // const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    const result: number[] = [];
+    // for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
+    //   const x = (i / 4) % this.width;
+    //   const y = Math.floor((i / 4) / this.width);
+    //   const r = imageData.data[i];
+    //   const g = imageData.data[i + 1];
+    //   const b = imageData.data[i + 2];
+    //   const a = imageData.data[i + 3];
+    //   if (r > g && r > b) {
+    //     result.push(GameObjectType.FOOD);
+    //   } else if (g > r && g > b) {
+    //     if (gamObject.collidesWith({ x, y })) {
+    //       result.push(GameObjectType.ME);
+    //     } else {
+    //       result.push(gamObject.type);
+    //     }
+    //   } else {
+    //     result.push(GameObjectType.NONE);
+    //   }
+    // }
+    return result;
   }
 
-  private updateGameObjects() {
-    this.nonSnakes.forEach(nonSnake => {
-      nonSnake.update();
-      nonSnake.draw(this.context);
-    });
-
-    this.snakes.forEach(snake => {
-      let moves = true;
-      this.nonSnakes.forEach(nonSnake => {
-        if (snake.collidesWith(nonSnake)) {
-          snake.eat(nonSnake as Food);
-        }
-      });
-
-      this.snakes.filter(otherSnake => otherSnake !== snake).forEach(otherSnake => {
-        if (snake.nextStepCollidesWith(otherSnake) && otherSnake.isMoving) {
-          moves = false;
-        }
-      });
-
-      snake.update(moves);
-      snake.draw(this.context);
-    });
-
-    this.gameObjects = this.gameObjects.filter(gO => !gO.dead);
-    if (this.snakes.length > 0) {
-      this.champions = [...this.snakes];
-    }
-  }
-
-  private printBroken() {
-    this.context.textAlign = 'center';
-    this.context.globalAlpha = 0.5;
-    this.context.fillStyle = 'white';
-    this.context.fillRect(0, 0, this.width, this.height);
-    this.context.globalAlpha = 1;
-    this.context.fillStyle = 'black';
-    this.context.fillText('BROKEN :(', this.width / 2, this.height / 2);
-  }
-
-  private printWaiting() {
-    this.context.textAlign = 'center';
-    this.context.globalAlpha = 0.5;
-    this.context.fillStyle = 'white';
-    this.context.fillRect(0, 0, this.width, this.height);
-    this.context.globalAlpha = 1;
-    this.context.fillStyle = 'black';
-    this.context.fillText('WAITING...', this.width / 2, this.height / 2);
-  }
 }

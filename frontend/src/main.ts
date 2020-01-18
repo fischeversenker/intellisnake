@@ -1,8 +1,7 @@
 import { App } from './app';
-import { Renderer } from './renderer';
 
-export const CANVAS_WIDTH = 100;
-export const CANVAS_HEIGHT = 100;
+export const CANVAS_WIDTH = window.innerWidth;
+export const CANVAS_HEIGHT = window.innerHeight;
 
 (function() {
 
@@ -10,11 +9,8 @@ export const CANVAS_HEIGHT = 100;
 
     const mainElement = document.querySelector('#main') as HTMLElement;
 
-    const app = new App(CANVAS_WIDTH, CANVAS_HEIGHT, mainElement);
+    const app = new App(mainElement, CANVAS_WIDTH, CANVAS_HEIGHT);
     app.init();
-
-    const renderer = new Renderer(mainElement);
-    renderer.run();
   });
 
 })();
