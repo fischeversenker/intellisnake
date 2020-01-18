@@ -45,11 +45,6 @@ export class Physics {
 
     // add hidden element to main element to give to temp renderer
     const hiddenEl = document.createElement('div');
-    hiddenEl.classList.add('hidden-canvas');
-    hiddenEl.style.setProperty('position', 'absolute');
-    hiddenEl.style.setProperty('left', '-110vw');
-    hiddenEl.style.setProperty('top', '-110vh');
-    this.element.appendChild(hiddenEl);
 
     // create a temp renderer
     this.tempRender = Render.create({
@@ -62,10 +57,34 @@ export class Physics {
       },
     });
 
-    this.bottomBoundary = Bodies.rectangle(this.width / 2, this.height , this.width, BOUNDARY_WIDTH, { isStatic: true });
-    this.topBoundary = Bodies.rectangle(this.width / 2, 0, this.width, BOUNDARY_WIDTH, { isStatic: true });
-    this.rightBoundary = Bodies.rectangle(this.width, this.height / 2, BOUNDARY_WIDTH, this.height, { isStatic: true });
-    this.leftBoundary = Bodies.rectangle(0, this.height / 2, BOUNDARY_WIDTH, this.height, { isStatic: true });
+    this.bottomBoundary = Bodies.rectangle(
+      this.width / 2,
+      this.height + BOUNDARY_WIDTH / 2,
+      this.width,
+      BOUNDARY_WIDTH,
+      { render: { visible: false }, isStatic: true, label: 'boundary' },
+    );
+    this.topBoundary = Bodies.rectangle(
+      this.width / 2,
+      0 - BOUNDARY_WIDTH / 2,
+      this.width,
+      BOUNDARY_WIDTH,
+      { render: { visible: false }, isStatic: true, label: 'boundary' },
+    );
+    this.rightBoundary = Bodies.rectangle(
+      this.width + BOUNDARY_WIDTH / 2,
+      this.height / 2,
+      BOUNDARY_WIDTH,
+      this.height,
+      { render: { visible: false }, isStatic: true, label: 'boundary' },
+    );
+    this.leftBoundary = Bodies.rectangle(
+      0 - BOUNDARY_WIDTH / 2,
+      this.height / 2,
+      BOUNDARY_WIDTH,
+      this.height,
+      { render: { visible: false }, isStatic: true, label: 'boundary' },
+    );
 
     World.add(this.engine.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);
   }
@@ -194,7 +213,6 @@ export class Physics {
     if (this.render && this.render.canvas) {
       const context = this.render.canvas.getContext('2d');
       if (context) {
-        // const data = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
         const tempRenderContext = this.tempRender.canvas.getContext('2d');
         if (tempRenderContext) {
           tempRenderContext.clearRect(0, 0, this.width, this.height);
@@ -208,6 +226,7 @@ export class Physics {
     bodies.forEach(body => {
       body.render.fillStyle = origColor;
     });
+
     if (!meData) {
       throw new Error('could not get image data for bodies');
     }

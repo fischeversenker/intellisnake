@@ -7,9 +7,8 @@ import { GameObject, GameObjectType } from "./utils";
 import { Message, MessageListener, MessageType, Websocket } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
-const GENERATION_SNAKE_COUNT = 20;
+const GENERATION_SNAKE_COUNT = 5;
 
-let foodCount = 0;
 let worldCount = 0;
 
 export class World implements MessageListener {
@@ -21,7 +20,6 @@ export class World implements MessageListener {
   private pendingWebSocketRequests: number[] = [];
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
-  private generationEndsTimeout = -1;
 
   champions: Snake[] = [];
 
@@ -45,7 +43,7 @@ export class World implements MessageListener {
     this.websocket = Websocket.getInstance();
     this.websocket.registerListener(this);
 
-    this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => snake.id) });
+    this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => String(snake.id)) });
   }
 
   begin() {
@@ -207,34 +205,21 @@ export class World implements MessageListener {
         matrix: this.toBitMatrix(snake),
         velocityX: snake.body.velocity.x,
         velocityY: snake.body.velocity.y,
-      }
+      },
     }), {});
   }
 
-  private toBitMatrix(gameObject: Snake): number[] {
-    // const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+  // returns matrix (as 1d array) where each pixel is repsesented as
+  // the sum of this pixel's r, g and b value
+  private toBitMatrix(snake: Snake): number[] {
     const result: number[] = [];
-    let imageData = this.physics.renderAsMe(gameObject.body, ...(gameObject as Snake).tail);
-    // for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
-    //   const x = (i / 4) % this.width;
-    //   const y = Math.floor((i / 4) / this.width);
-    //   const r = imageData.data[i];
-    //   const g = imageData.data[i + 1];
-    //   const b = imageData.data[i + 2];
-    //   const a = imageData.data[i + 3];
-    //   if (r > g && r > b) {
-    //     result.push(GameObjectType.FOOD);
-    //   } else if (g > r && g > b) {
-    //     if (gameObject.collidesWith({ x, y })) {
-    //       result.push(GameObjectType.ME);
-    //     } else {
-    //       result.push(gameObject.type);
-    //     }
-    //   } else {
-    //     result.push(GameObjectType.NONE);
-    //   }
-    // }
-    return Array.from(imageData.data);
+    let imageData = this.physics.renderAsMe(snake.body, ...(snake as Snake).tail);
+    for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+      result.push(r + g + b);
+    }
+    return result;
   }
-
 }
