@@ -45,16 +45,16 @@ export class Physics {
     World.add(this.engine.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);
   }
 
-  addRandomSnake(): Body {
+  addRandomSnake(): { head: Body, tail: Body[], constraints: Constraint[] } {
     const randomX = BOUNDARY_WIDTH * 2 + Math.random() * (this.width - BOUNDARY_WIDTH * 4);
     const randomY = BOUNDARY_WIDTH * 2 + Math.random() * (this.height - BOUNDARY_WIDTH * 4);
-    const [snakeHead, snakeTail, snakeConstraints] = this.createSnakeBody(randomX, randomY, 10);
-    World.add(this.engine.world, [snakeHead, ...snakeTail]);
-    World.add(this.engine.world, snakeConstraints);
-    return snakeHead;
+    const snake = this.createSnakeBody(randomX, randomY, 10);
+    World.add(this.engine.world, [snake.head, ...snake.tail]);
+    World.add(this.engine.world, snake.constraints);
+    return snake;
   }
 
-  createSnakeBody(x: number, y: number, length: number): any {
+  createSnakeBody(x: number, y: number, length: number): { head: Body, tail: Body[], constraints: Constraint[] } {
     const snakeHeadSize = 5;
     const snakeTailPieceSize = 4;
     const snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
@@ -67,7 +67,7 @@ export class Physics {
       },
     }
     const head = Bodies.circle(x, y, snakeHeadSize, { ...snakeOptions });
-    const tailPieces = [];
+    const tail = [];
     const constraints = [];
     for (let i = 1; i <= length; i++) {
       const isFirst = i === 1;
@@ -78,7 +78,7 @@ export class Physics {
         label: 'snake-tail',
       });
       const constraint = Constraint.create({
-        bodyA: isFirst ? head : tailPieces[i - 2],
+        bodyA: isFirst ? head : tail[i - 2],
         bodyB: tailPiece,
         render: {
           visible: false,
@@ -86,10 +86,10 @@ export class Physics {
           strokeStyle: 'line',
         },
       });
-      tailPieces.push(tailPiece);
+      tail.push(tailPiece);
       constraints.push(constraint);
     }
-    return [head, tailPieces, constraints];
+    return { head, tail, constraints };
   }
 
   addFood(x: number, y: number): Body {

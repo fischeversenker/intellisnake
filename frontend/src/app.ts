@@ -3,7 +3,7 @@ import { Snake } from './snake';
 import { Message, MessageListener, Websocket } from './websocket';
 import { World } from './world';
 
-export const GENERATION_DURATION_MS = 3 * 1000;
+export const GENERATION_DURATION_MS = 30 * 1000;
 
 export class App implements MessageListener {
   private debuggerElement: HTMLElement;

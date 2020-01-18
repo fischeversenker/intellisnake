@@ -1,4 +1,4 @@
-import { Body, Vector } from "matter-js";
+import { Body, Constraint, Vector } from "matter-js";
 import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
@@ -17,6 +17,8 @@ export class Snake implements GameObject {
   constructor(
     public id: number,
     public body: Body,
+    public tail: Body[],
+    public constraints: Constraint[],
   ) {
     this.createdAt = Date.now();
   }
@@ -34,16 +36,11 @@ export class Snake implements GameObject {
   }
 
   update(): void {
-    if (this.energyLevel <= 0) {
-      this.die();
-    }
-
     if (this.dead) {
       return;
     }
 
     this.energyLevel -= (1 / 2) * /* mass */ 1 * (this.velocityMagnitude * 1);
-
     this.energyLevel--;
   }
 
@@ -62,6 +59,6 @@ export class Snake implements GameObject {
   }
 
   private get velocityMagnitude(): number {
-    return Math.sqrt(Math.pow(this.body.velocity.x, 2) + Math.pow(this.body.velocity.y, 2));
+    return Vector.magnitude(this.body.velocity);
   }
 }

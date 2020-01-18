@@ -38,7 +38,7 @@ export class World implements MessageListener {
     // add snakes
     for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
       const snakeBody = this.physics.addRandomSnake();
-      const snake = new Snake(snakeBody.id, snakeBody);
+      const snake = new Snake(snakeBody.head.id, snakeBody.head, snakeBody.tail, snakeBody.constraints);
       this.gameObjects.push(snake);
     }
 
@@ -89,6 +89,20 @@ export class World implements MessageListener {
       const food = new Food(foodBody.id, foodBody, 500);
       this.gameObjects.push(food);
     }
+
+    this.snakes.forEach(snake => {
+      snake.update();
+      if (!snake.dead && snake.energyLevel <= 0) {
+        MWorld.remove(this.physics.engine.world, snake.body);
+        snake.tail.forEach(tailPiece => {
+          MWorld.remove(this.physics.engine.world, tailPiece);
+        });
+        snake.constraints.forEach(constraint => {
+          MWorld.remove(this.physics.engine.world, constraint);
+        });
+        snake.die();
+      }
+    });
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
