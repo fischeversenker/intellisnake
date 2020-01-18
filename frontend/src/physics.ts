@@ -1,4 +1,4 @@
-import { Bodies, Body, Constraint, Engine, Render, World, IBodyDefinition } from 'matter-js';
+import { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World } from 'matter-js';
 import { GameObjectType } from './utils';
 
 const WIDTH = window.innerWidth;
@@ -8,6 +8,7 @@ const BOUNDARY_WIDTH = 40;
 export class Physics {
 
   public engine: Engine;
+  private runner: Runner | null = null;
   private render: Render;
 
   private bottomBoundary: Body;
@@ -59,7 +60,7 @@ export class Physics {
     const snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
     const snakeOptions: IBodyDefinition = {
       friction: 0,
-      frictionAir: 0.1,
+      frictionAir: 0.05,
       label: String(GameObjectType.SNAKE),
       render: {
         fillStyle: snakeColor,
@@ -105,7 +106,7 @@ export class Physics {
 
   run() {
     // run the engine
-    Engine.run(this.engine);
+    this.runner = Runner.run(this.engine);
 
     // run the renderer
     Render.run(this.render);
@@ -113,5 +114,13 @@ export class Physics {
 
   stop() {
     Render.stop(this.render);
+    if (this.runner) {
+      Runner.stop(this.runner);
+    }
+  }
+
+  destroy() {
+    World.clear(this.engine.world, true);
+    Engine.clear(this.engine);
   }
 }

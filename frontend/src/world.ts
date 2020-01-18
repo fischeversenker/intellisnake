@@ -1,10 +1,10 @@
+import { Body, Engine, Events, IEventCollision, Vector, World as MWorld } from "matter-js";
 import { GENERATION_DURATION_MS } from "./app";
+import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
 import { GameObject, GameObjectType } from "./utils";
 import { Message, MessageListener, MessageType, Websocket } from "./websocket";
-import { Events, Body, World as MWorld, Vector } from "matter-js";
-import { Food } from "./food";
 
 const AI_CALL_FREQUENCY = 10;
 const GENERATION_SNAKE_COUNT = 20;
@@ -14,8 +14,6 @@ let worldCount = 0;
 
 export class World implements MessageListener {
 
-  physics: Physics;
-
   id = worldCount++;
   startTime: number = 0;
 
@@ -23,7 +21,6 @@ export class World implements MessageListener {
   private pendingWebSocketRequests: number[] = [];
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
-  private broken = false;
   private generationEndsTimeout = -1;
 
   champions: Snake[] = [];
@@ -31,39 +28,12 @@ export class World implements MessageListener {
   constructor(
     private onNewEpoch: Function,
     public generationCount: number = 0,
+    private physics: Physics,
     private width: number,
     private height: number,
   ) {
-    const mainElement = document.querySelector('#main') as HTMLElement;
-    this.physics = new Physics(mainElement, this.width, this.height);
-
-    Events.on(this.physics.engine, 'beforeUpdate', () => this.update());
-    Events.on(this.physics.engine, 'collisionStart', (event) => {
-      const foodPairs = event.pairs.filter(pair => {
-        const aIsSnakeBIsFood = pair.bodyA.label === String(GameObjectType.SNAKE) && pair.bodyB.label === String(GameObjectType.FOOD);
-        const bIsSnakeAIsFood = pair.bodyA.label === String(GameObjectType.FOOD) && pair.bodyB.label === String(GameObjectType.SNAKE);
-        return aIsSnakeBIsFood || bIsSnakeAIsFood;
-      });
-
-      foodPairs.forEach(pair => {
-        let snake: Snake, snakeBody: Body, food: Food, foodBody: Body;
-
-        if (pair.bodyA.label === String(GameObjectType.FOOD)) {
-          foodBody = pair.bodyA;
-          snakeBody = pair.bodyB;
-        } else {
-          foodBody = pair.bodyB;
-          snakeBody = pair.bodyA;
-        }
-
-        food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id) as Food;
-        snake = this.snakes.find(snake => snake.id === snakeBody.id) as Snake;
-        if (snake && food) {
-          snake.eat(food);
-        }
-        MWorld.remove(this.physics.engine.world, foodBody);
-      });
-    });
+    Events.on(this.physics.engine, 'beforeUpdate', this.update);
+    Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
 
     // add snakes
     for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
@@ -84,27 +54,31 @@ export class World implements MessageListener {
     this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
   }
 
-  stop(broken = false) {
-    if (broken) {
-      this.broken = true;
-    }
+  stop() {
     this.physics.stop();
   }
 
   destroy() {
     this.stop();
+    this.physics.destroy();
+
+    Events.off(this.physics.engine, 'beforeUpdate', this.update);
+    Events.off(this.physics.engine, 'collisionStart', this.handleCollissions);
+
     this.gameObjects = [];
     this.websocket.removeListener(this);
   }
 
-  update() {
+  update = () => {
     if (Date.now() - this.startTime > GENERATION_DURATION_MS) {
       console.log('[WORLD]: started new generation because time ran out');
+      this.stop();
       return this.onNewEpoch();
     }
 
-    if (this.snakes.length === 0) {
+    if (this.aliveSnakes.length === 0) {
       console.log('[WORLD]: starting new generation because there are no snakes left');
+      this.stop();
       return this.onNewEpoch();
     }
 
@@ -118,12 +92,43 @@ export class World implements MessageListener {
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
-      if (this.snakes.length > 0) {
+      if (this.aliveSnakes.length > 0) {
         this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
       }
     }
 
     this.tickCount++;
+  }
+
+  handleCollissions = (event: IEventCollision<Engine>) => {
+    const foodPairs = event.pairs.filter(pair => {
+      const aIsSnakeBIsFood = pair.bodyA.label === String(GameObjectType.SNAKE) && pair.bodyB.label === String(GameObjectType.FOOD);
+      const bIsSnakeAIsFood = pair.bodyA.label === String(GameObjectType.FOOD) && pair.bodyB.label === String(GameObjectType.SNAKE);
+      return aIsSnakeBIsFood || bIsSnakeAIsFood;
+    });
+
+    foodPairs.forEach(pair => {
+      let snake: Snake, snakeBody: Body, food: Food, foodBody: Body;
+
+      if (pair.bodyA.label === String(GameObjectType.FOOD)) {
+        foodBody = pair.bodyA;
+        snakeBody = pair.bodyB;
+      } else {
+        foodBody = pair.bodyB;
+        snakeBody = pair.bodyA;
+      }
+
+      food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id) as Food;
+      snake = this.snakes.find(snake => snake.id === snakeBody.id) as Snake;
+      if (snake && food) {
+        snake.eat(food);
+      }
+      MWorld.remove(this.physics.engine.world, foodBody);
+    });
+  }
+
+  get aliveSnakes(): Snake[] {
+    return this.snakes.filter(snake => snake.dead === false);
   }
 
   get snakes(): Snake[] {
@@ -147,11 +152,11 @@ export class World implements MessageListener {
         break;
       case MessageType.DATA:
         for (let destination in message.data) {
-          let destinationGameObject = this.gameObjects.find(gO => Number(gO.id) === Number(destination));
-          if (destinationGameObject && destinationGameObject.updateVelocity) {
-            const x = message.data[destinationGameObject.id][0];
-            const y = message.data[destinationGameObject.id][1];
-            destinationGameObject.updateVelocity(Vector.create(x, y));
+          let snake = this.snakes.find(gO => Number(gO.id) === Number(destination));
+          if (snake && snake.updateVelocity) {
+            const x = message.data[snake.id][0];
+            const y = message.data[snake.id][1];
+            snake.updateVelocity(Vector.create(x, y));
           }
         }
         break

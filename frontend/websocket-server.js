@@ -9,11 +9,10 @@ wss.on('connection', function connection(ws) {
     if (data.type === 'generation' || data.type === 'reproduce') {
       setTimeout(() => {
         ws.send(JSON.stringify({ messageId: data.messageId, type: 'ack', data: {} }));
-      }, 2000);
+      }, 500);
     } else {
       const ids = Object.keys(data.data);
       const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] })).reduce((acc, pos) => ({...acc, ...pos}), {});
-      resultData["0"] = [1, -1];
 
       setTimeout(() => {
         ws.send(JSON.stringify({
