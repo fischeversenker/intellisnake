@@ -116,6 +116,9 @@ export class World implements MessageListener {
 
   handleCollissions = (event: IEventCollision<Engine>) => {
     const foodPairs = event.pairs.filter(pair => {
+      if (pair.bodyA.label === 'snake-tail' || pair.bodyB.label === 'snake-tail') {
+        return false;
+      }
       const aIsSnakeBIsFood = pair.bodyA.label === String(GameObjectType.SNAKE) && pair.bodyB.label === String(GameObjectType.FOOD);
       const bIsSnakeAIsFood = pair.bodyA.label === String(GameObjectType.FOOD) && pair.bodyB.label === String(GameObjectType.SNAKE);
       return aIsSnakeBIsFood || bIsSnakeAIsFood;
@@ -132,10 +135,12 @@ export class World implements MessageListener {
         snakeBody = pair.bodyA;
       }
 
-      food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id) as Food;
+      food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id || potentialFood.id === foodBody.parent.id) as Food;
       snake = this.snakes.find(snake => snake.id === snakeBody.id) as Snake;
+
       if (snake && food) {
         snake.eat(food);
+        food.body.parts.forEach(part => MWorld.remove(this.physics.engine.world, part));
       }
       MWorld.remove(this.physics.engine.world, foodBody);
     });

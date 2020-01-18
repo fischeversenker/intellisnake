@@ -109,9 +109,27 @@ export class Physics {
   }
 
   createFood(x: number, y: number = 500): Body {
-    return Bodies.rectangle(x, y, 10, 10, {
+    const halo = Bodies.circle(x, y, 16, {
       label: String(GameObjectType.FOOD),
+      friction: 0,
+      frictionAir: 0.4,
+      render: {
+        fillStyle: 'white',
+        opacity: 0.1,
+      },
     });
+    const foodBody = Bodies.rectangle(x, y, 8, 8, {
+      label: String(GameObjectType.FOOD),
+      friction: 0,
+      frictionAir: 0.4,
+    });
+    const food = Body.create({
+      label: String(GameObjectType.FOOD),
+      parts: [foodBody, halo],
+      frictionAir: 0.4,
+      inertia: 0,
+    });
+    return food;
   }
 
   run() {
