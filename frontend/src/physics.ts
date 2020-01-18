@@ -5,6 +5,8 @@ const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 const BOUNDARY_WIDTH = 40;
 
+const snakeColors: Map<number, string> = new Map();
+
 export class Physics {
 
   public engine: Engine;
@@ -57,7 +59,15 @@ export class Physics {
   createSnakeBody(x: number, y: number, length: number): { head: Body, tail: Body[], constraints: Constraint[] } {
     const snakeHeadSize = 5;
     const snakeTailPieceSize = 4;
-    const snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
+
+    // get an existing snake color or add a random one
+    let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
+    if (snakeColors.has(this.snakesOnWorld.length)) {
+      snakeColor = snakeColors.get(this.snakesOnWorld.length) as string;
+    } else {
+      snakeColors.set(this.snakesOnWorld.length, snakeColor);
+    }
+
     const snakeOptions: IBodyDefinition = {
       friction: 0,
       frictionAir: 0.05,
@@ -110,6 +120,10 @@ export class Physics {
 
     // run the renderer
     Render.run(this.render);
+  }
+
+  get snakesOnWorld(): Body[] {
+    return this.engine.world.bodies.filter(body => body.label === String(GameObjectType.SNAKE));
   }
 
   stop() {
