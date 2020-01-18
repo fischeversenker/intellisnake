@@ -3,7 +3,10 @@ import { GameObjectType } from './utils';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
+const TEMP_RENDER_WIDTH = 100;
+const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
+const ME_COLOR = 'white';
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -12,6 +15,7 @@ export class Physics {
   public engine: Engine;
   private runner: Runner | null = null;
   private render: Render;
+  private tempRender: Render;
 
   private bottomBoundary: Body;
   private topBoundary: Body;
@@ -31,6 +35,25 @@ export class Physics {
     // create a renderer
     this.render = Render.create({
       element: this.element,
+      engine: this.engine,
+      options: {
+        width: this.width,
+        height: this.height,
+        wireframes: false,
+      },
+    });
+
+    // add hidden element to main element to give to temp renderer
+    const hiddenEl = document.createElement('div');
+    hiddenEl.classList.add('hidden-canvas');
+    hiddenEl.style.setProperty('position', 'absolute');
+    hiddenEl.style.setProperty('left', '-110vw');
+    hiddenEl.style.setProperty('top', '-110vh');
+    this.element.appendChild(hiddenEl);
+
+    // create a temp renderer
+    this.tempRender = Render.create({
+      element: hiddenEl,
       engine: this.engine,
       options: {
         width: this.width,
@@ -154,5 +177,40 @@ export class Physics {
   destroy() {
     World.clear(this.engine.world, true);
     Engine.clear(this.engine);
+  }
+
+  renderAsMe(...bodies: Body[]): ImageData {
+    let origColor: string | undefined;
+    // set ME_COLOR for all body parts
+    bodies.forEach(body => {
+      origColor = body.render.fillStyle;
+      body.render.fillStyle = ME_COLOR;
+    });
+
+    // render world with temp renderer to not disturb
+    // the shown (correctly colored) main rendering
+    let meData;
+    Render.world(this.tempRender);
+    if (this.render && this.render.canvas) {
+      const context = this.render.canvas.getContext('2d');
+      if (context) {
+        // const data = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+        const tempRenderContext = this.tempRender.canvas.getContext('2d');
+        if (tempRenderContext) {
+          tempRenderContext.clearRect(0, 0, this.width, this.height);
+          tempRenderContext.drawImage(context.canvas, 0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
+          meData = tempRenderContext.getImageData(0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
+        }
+      }
+    }
+
+    // reset orig colors
+    bodies.forEach(body => {
+      body.render.fillStyle = origColor;
+    });
+    if (!meData) {
+      throw new Error('could not get image data for bodies');
+    }
+    return meData as ImageData;
   }
 }

@@ -211,9 +211,10 @@ export class World implements MessageListener {
     }), {});
   }
 
-  private toBitMatrix(gamObject: GameObject): number[] {
+  private toBitMatrix(gameObject: Snake): number[] {
     // const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
     const result: number[] = [];
+    let imageData = this.physics.renderAsMe(gameObject.body, ...(gameObject as Snake).tail);
     // for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
     //   const x = (i / 4) % this.width;
     //   const y = Math.floor((i / 4) / this.width);
@@ -224,16 +225,16 @@ export class World implements MessageListener {
     //   if (r > g && r > b) {
     //     result.push(GameObjectType.FOOD);
     //   } else if (g > r && g > b) {
-    //     if (gamObject.collidesWith({ x, y })) {
+    //     if (gameObject.collidesWith({ x, y })) {
     //       result.push(GameObjectType.ME);
     //     } else {
-    //       result.push(gamObject.type);
+    //       result.push(gameObject.type);
     //     }
     //   } else {
     //     result.push(GameObjectType.NONE);
     //   }
     // }
-    return result;
+    return Array.from(imageData.data);
   }
 
 }
