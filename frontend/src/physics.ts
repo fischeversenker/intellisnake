@@ -98,7 +98,7 @@ export class Physics {
     return food;
   }
 
-  createFood(x: number, y: number, value: number = 500): Body {
+  createFood(x: number, y: number = 500): Body {
     return Bodies.rectangle(x, y, 10, 10, {
       label: String(GameObjectType.FOOD),
     });

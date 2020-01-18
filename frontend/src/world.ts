@@ -86,7 +86,7 @@ export class World implements MessageListener {
       const x = this.sampleNormalDistribution() * this.width;
       const y = this.sampleNormalDistribution() * this.height;
       const foodBody = this.physics.addFood(x, y);
-      const food = new Food(foodBody.id, foodBody);
+      const food = new Food(foodBody.id, foodBody, 500);
       this.gameObjects.push(food);
     }
 

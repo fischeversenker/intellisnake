@@ -10,11 +10,11 @@ export class Food implements GameObject {
   velocity: Vector = { x: 0, y: 0 };
   dead = false;
   appearance: number = 0;
-  value = 500;
 
   constructor(
     public id: number,
     public body: Body,
+    public value: number = 500,
   ) { }
 
   updateVelocity(velocity: Vector): void { }
