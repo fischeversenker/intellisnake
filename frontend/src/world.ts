@@ -199,7 +199,7 @@ export class World implements MessageListener {
   }
 
   private currentSnakesData(): any {
-    return this.snakes.reduce((acc, snake) => ({
+    return this.aliveSnakes.reduce((acc, snake) => ({
       ...acc,
       [snake.id]: {
         energyLevel: snake.energyLevel,
