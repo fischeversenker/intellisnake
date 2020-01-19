@@ -12,7 +12,7 @@ wss.on('connection', function connection(ws) {
       }, 500);
     } else {
       const ids = Object.keys(data.data);
-      const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5), (Math.random() - 0.5)] })).reduce((acc, pos) => ({...acc, ...pos}), {});
+      const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] })).reduce((acc, pos) => ({...acc, ...pos}), {});
 
       setTimeout(() => {
         ws.send(JSON.stringify({

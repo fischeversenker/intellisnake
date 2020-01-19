@@ -14,6 +14,7 @@ let worldCount = 0;
 export class World implements MessageListener {
 
   id = worldCount++;
+  running = false;
   startTime: number = 0;
 
   private websocket: Websocket;
@@ -43,19 +44,23 @@ export class World implements MessageListener {
 
     this.websocket = Websocket.getInstance();
     this.websocket.registerListener(this);
-
-    this.sendWebSocketMessage(MessageType.GENERATION, { snakeIds: this.snakes.map(snake => String(snake.id)) });
     console.log('[WORLD]: ... ready');
   }
 
+  get snakeIds(): number[] {
+    return this.aliveSnakes.map(snake => snake.id);
+  }
+
   begin() {
+    this.running = true;
     this.startTime = Date.now();
     this.physics.run();
-    this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
   }
 
   stop() {
+    this.running = false;
     this.physics.stop();
+    this.startTime = Infinity;
   }
 
   destroy() {
@@ -70,6 +75,11 @@ export class World implements MessageListener {
   }
 
   update = () => {
+    if (!this.running) {
+      console.log('[WORLD]: updating but not running (kind of a todo tbh)');
+      return;
+    }
+
     if (Date.now() - this.startTime > GENERATION_DURATION_MS) {
       console.log('[WORLD]: started new generation because time ran out');
       this.stop();
@@ -141,18 +151,18 @@ export class World implements MessageListener {
 
       if (snake && food) {
         snake.eat(food);
-        food.body.parts.forEach(part => MWorld.remove(this.physics.engine.world, part));
+        food.body.parts.forEach((part: Body) => MWorld.remove(this.physics.engine.world, part));
       }
       MWorld.remove(this.physics.engine.world, foodBody);
     });
   }
 
-  get aliveSnakes(): Snake[] {
-    return this.snakes.filter(snake => snake.dead === false);
-  }
-
   get snakes(): Snake[] {
     return this.gameObjects.filter(gO => gO.type === GameObjectType.SNAKE) as Snake[];
+  }
+
+  get aliveSnakes(): Snake[] {
+    return this.snakes.filter(snake => snake.dead === false);
   }
 
   get nonSnakes(): GameObject[] {

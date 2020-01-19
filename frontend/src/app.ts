@@ -1,6 +1,6 @@
 import { Physics } from './physics';
 import { Snake } from './snake';
-import { Message, MessageListener, Websocket } from './websocket';
+import { Message, MessageListener, MessageType, Websocket } from './websocket';
 import { World } from './world';
 
 export const GENERATION_DURATION_MS = 30 * 1000;
@@ -42,27 +42,30 @@ export class App implements MessageListener {
   }
 
   onWebsocketOpen(evt: any): void {
-    this.startNewWorld();
+    this.onNewEpoch();
   }
 
   onWebsocketClose(evt: any): void {
     console.log('[MAIN]:', evt);
     if (this.world) {
       this.world.stop();
+      delete this.world;
     }
   }
 
   onMessage(message: Message) {
     this.lastMessage = Date.now();
-    if (message.type === 'ack' && message.data) {
-      this.lastAckData = message.data;
+    if (this.waitingForNewEpoch && message.type === 'ack') {
+      this.world = new World(() => this.onNewEpoch(), this.generationCount, this.physics, this.width, this.height);
+      this.world.begin();
+      this.waitingForNewEpoch = false;
     }
   }
 
   init() {
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r' && !evt.ctrlKey) {
-        this.startNewWorld();
+        this.sendGenerationMessage();
       }
       if (evt.key === 's' && !evt.ctrlKey && this.world) {
         this.world.stop();
@@ -70,13 +73,13 @@ export class App implements MessageListener {
     });
   }
 
-  startNewWorld() {
-    if (this.world) {
-      this.world.destroy();
-    }
-
-    this.world = new World(() => this.onNewEpoch(), this.generationCount, this.physics, this.width, this.height);
-    this.waitingForNewEpoch = false;
+  sendGenerationMessage() {
+    // TODO: currently we use the first "generation" WS message to send the snake ids to initialize the AI
+    // would be nicer to either
+    // - get the ids in the initial ack from the AI
+    // - lets assume ids in range [0..NUMBER_OF_SNAKES] and instead of the actual ids just send the
+    //   number of snakes in the "generation" message
+    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds: ['666', '687', '708', '729', '750']} });
   }
 
   drawWorldInfo() {
@@ -119,8 +122,13 @@ export class App implements MessageListener {
     if (!this.waitingForNewEpoch) {
       setTimeout(() => {
         this.generationCount++;
-        this.lastSurvivors = this.world!.champions;
-        this.startNewWorld();
+
+        if (this.world) {
+          this.lastSurvivors = this.world.champions;
+          this.world.destroy();
+        }
+
+        this.sendGenerationMessage();
       }, 300);
       this.waitingForNewEpoch = true;
     }
