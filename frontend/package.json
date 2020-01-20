@@ -13,9 +13,9 @@
     "tsc": "tsc",
     "tsc:watch": "tsc -w",
     "bundle": "browserify ./tsc-out/main.js -o ./dist/bundle.js",
-    "bundle:watch": "watchify ./tsc-out/main.js -o ./dist/bundle.js",
-    "copy:public": "cp -R ./public/* ./dist",
-    "copy:public:watch": "watch \"npm run copy:public\" ./public",
+    "bundle:watch": "watchify ./tsc-out/main.js -o ./dist/bundle.js --delay 100",
+    "copy:public": "mkdir -p ./dist && cp -R ./public/* ./dist",
+    "copy:public:watch": "watch \"npm run copy:public\" ./public --wait=100",
     "mock-server": "nodemon ./websocket-server.js"
   },
   "keywords": [],
