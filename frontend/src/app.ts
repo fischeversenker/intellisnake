@@ -1,7 +1,7 @@
-import { Physics } from './physics';
+import { Physics, STARTING_BODY_ID } from './physics';
 import { Snake } from './snake';
 import { Message, MessageListener, MessageType, Websocket } from './websocket';
-import { World } from './world';
+import { GENERATION_SNAKE_COUNT, World } from './world';
 
 export const GENERATION_DURATION_MS = 30 * 1000;
 
@@ -79,7 +79,11 @@ export class App implements MessageListener {
     // - get the ids in the initial ack from the AI
     // - lets assume ids in range [0..NUMBER_OF_SNAKES] and instead of the actual ids just send the
     //   number of snakes in the "generation" message
-    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds: ['666', '687', '708', '729', '750']} });
+    const snakeIds: string[] = [];
+    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
+      snakeIds.push(String(STARTING_BODY_ID + i * 21));
+    }
+    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds } });
   }
 
   drawWorldInfo() {

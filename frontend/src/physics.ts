@@ -7,7 +7,7 @@ const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
 const ME_COLOR = 'white';
-const STARTING_BODY_ID = 666;
+export const STARTING_BODY_ID = 666;
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -105,8 +105,8 @@ export class Physics {
   }
 
   addRandomSnake(): { head: Body, tail: Body[], constraints: Constraint[] } {
-    const randomX = BOUNDARY_WIDTH * 2 + Math.random() * (this.width - BOUNDARY_WIDTH * 4);
-    const randomY = BOUNDARY_WIDTH * 2 + Math.random() * (this.height - BOUNDARY_WIDTH * 4);
+    const randomX = BOUNDARY_WIDTH * 3 + Math.random() * (this.width - BOUNDARY_WIDTH * 6);
+    const randomY = BOUNDARY_WIDTH * 3 + Math.random() * (this.height - BOUNDARY_WIDTH * 6);
     const snake = this.createSnakeBody(randomX, randomY, 10);
     World.add(this.engine.world, [snake.head, ...snake.tail]);
     World.add(this.engine.world, snake.constraints);
@@ -128,6 +128,8 @@ export class Physics {
     const snakeOptions: IBodyDefinition = {
       friction: 0,
       frictionAir: 0.05,
+      density: 1,
+      mass: 1,
       label: String(GameObjectType.SNAKE),
       render: {
         fillStyle: snakeColor,

@@ -7,7 +7,7 @@ import { GameObject, GameObjectType } from "./utils";
 import { Message, MessageListener, MessageType, Websocket } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
-const GENERATION_SNAKE_COUNT = 5;
+export const GENERATION_SNAKE_COUNT = 20;
 
 let worldCount = 0;
 
