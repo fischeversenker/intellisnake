@@ -18,15 +18,15 @@ class AI():
         self.N = None # list to store n noiseMatrix
         self.W_try = None # list to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
-        self.sigma = 0.01 # noise standard deviation
-        self.alpha = 0.001 # learning rate
+        self.sigma = 0.1 # noise standard deviation
+        self.alpha = 0.00001 # learning rate
         self.shape = 64
         self.levels = 4
         self.model = []
         self.IDs = {}
         self.FilePathLog = "./log/"
         self.frameCount = 0
-        self.FramesPerEpoch = 300
+        self.FramesPerEpoch = 50
 
 
         np.random.seed(1337)
