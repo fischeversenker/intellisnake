@@ -141,11 +141,11 @@ class AI():
             self.epoch = data
         else:       
             data["id_internal"] = data["id"].astype(int).map(self.IDs)
-            for id in data["id_internal"]:
+            for id,id_ in zip(data["id_internal"],data["id"]):
                 df = self.epoch[self.epoch["id_internal"]==id]
                 df_ = data[data["id_internal"]==id]
                 sum_ = df["energyIntake"] + df_["energyIntake"]
-                self.epoch.loc[self.epoch.id == id, 'energyIntake'] = sum_
+                self.epoch.loc[self.epoch.id == id_, 'energyIntake'] = sum_
 
     def logging(self,generation):
         log =[generation,sum(self.epoch["energyIntake"])]
