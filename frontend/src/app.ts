@@ -15,7 +15,7 @@ export class App implements MessageListener {
   private lastAckData: any;
   private lastSurvivors: Snake[] = [];
   private physics: Physics;
-  private waitingForNewEpoch = false;
+  private generationProgress = 0;
 
   constructor(
     private rootElement: HTMLElement,
@@ -42,7 +42,11 @@ export class App implements MessageListener {
   }
 
   onWebsocketOpen(evt: any): void {
-    this.onNewEpoch();
+    const snakeIds: string[] = [];
+    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
+      snakeIds.push(String(STARTING_BODY_ID + i * 21));
+    }
+    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds } });
   }
 
   onWebsocketClose(evt: any): void {
@@ -55,86 +59,35 @@ export class App implements MessageListener {
 
   onMessage(message: Message) {
     this.lastMessage = Date.now();
-    if (this.waitingForNewEpoch && message.type === 'ack') {
-      this.world = new World(() => this.onNewEpoch(), this.generationCount, this.physics, this.width, this.height);
-      this.world.begin();
-      this.waitingForNewEpoch = false;
+    if (message.type === MessageType.GENERATION) {
+      this.generationCount = message.data.generation as number;
+      console.log('[APP]: starting generation', this.generationCount);
+      this.startNewGeneration();
+    } else {
+      if (message.data && message.data.progress) {
+        this.generationProgress = message.data.progress;
+      }
+      if (this.world) {
+        this.world.onMessage(message);
+      }
     }
   }
 
   init() {
     document.addEventListener('keydown', (evt) => {
-      if (evt.key === 'r' && !evt.ctrlKey) {
-        this.sendGenerationMessage();
-      }
       if (evt.key === 's' && !evt.ctrlKey && this.world) {
         this.world.stop();
       }
     });
   }
 
-  sendGenerationMessage() {
-    // TODO: currently we use the first "generation" WS message to send the snake ids to initialize the AI
-    // would be nicer to either
-    // - get the ids in the initial ack from the AI
-    // - lets assume ids in range [0..NUMBER_OF_SNAKES] and instead of the actual ids just send the
-    //   number of snakes in the "generation" message
-    const snakeIds: string[] = [];
-    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
-      snakeIds.push(String(STARTING_BODY_ID + i * 21));
-    }
-    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds } });
-  }
-
-  drawWorldInfo() {
+  startNewGeneration() {
     if (this.world) {
-      let infoItems = [
-        `<div>Generation:</div><div>${this.world.generationCount}</div>`,
-      ];
-
-      const survivorData = this.lastSurvivors
-        ? this.lastSurvivors.map(survivor => `LifeSpan: ${survivor.getLifespan()}s | EnergyIntake: ${survivor.energyIntake}`).join('\n')
-        : '';
-      infoItems.push(`<div>Last survivors:</div><div>${survivorData}</div>`);
-
-      infoItems.push(
-        `<div>Last ack data:</div><div>${this.lastAckData ? Object.keys(this.lastAckData) : 'null'}</div>`,
-      );
-
-      if (true /* this.world.running */) {
-        infoItems.push(`<div>Snakes alive:</div><div>${this.world.snakes.length}</div>`);
-        const maxSnake = this.world.snakes.reduce((acc: any, snake) => {
-          if (!acc || snake.energyLevel > acc.energyLevel) {
-            return snake;
-          } else {
-            return acc;
-          }
-        }, null);
-
-        infoItems.push(
-          `<div>Max EL (snake):</div><div>${String(Math.floor(maxSnake && maxSnake.energyLevel ? maxSnake.energyLevel : 0))} (${maxSnake && maxSnake.id ? maxSnake.id : -1})</div>`,
-          `<div>Time left:</div><div>${Math.floor((GENERATION_DURATION_MS - (Date.now() - this.world.startTime)) / 1000)}s</div>`,
-          `<div>Last message:</div><div>${Math.floor(Date.now() - this.lastMessage)}ms</div>`,
-        );
-      }
-      this.debuggerElement.innerHTML = infoItems.join('');
-      requestAnimationFrame(() => this.drawWorldInfo());
+      this.lastSurvivors = this.world.champions;
+      this.world.destroy();
     }
+    this.world = new World(this.generationCount, this.physics, this.width, this.height);
+    this.world.begin();
   }
 
-  onNewEpoch() {
-    if (!this.waitingForNewEpoch) {
-      setTimeout(() => {
-        this.generationCount++;
-
-        if (this.world) {
-          this.lastSurvivors = this.world.champions;
-          this.world.destroy();
-        }
-
-        this.sendGenerationMessage();
-      }, 300);
-      this.waitingForNewEpoch = true;
-    }
-  }
 }

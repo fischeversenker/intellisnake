@@ -1,13 +1,16 @@
 import Matter, { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World } from 'matter-js';
 import { GameObjectType } from './utils';
 
-const WIDTH = window.innerWidth;
-const HEIGHT = window.innerHeight;
+export const STARTING_BODY_ID = 666;
+
 const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
 const ME_COLOR = 'white';
-export const STARTING_BODY_ID = 666;
+
+const SNAKE_HEAD_SIZE = 8;
+const SNAKE_TAIL_SIZE = 6;
+const FOOD_SIZE = 24;
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -30,8 +33,8 @@ export class Physics {
 
   constructor(
     private element: HTMLElement,
-    public width: number = WIDTH,
-    public height: number = HEIGHT,
+    public width: number,
+    public height: number,
   ) {
     // create an engine
     this.engine = Engine.create();
@@ -114,9 +117,6 @@ export class Physics {
   }
 
   createSnakeBody(x: number, y: number, length: number): { head: Body, tail: Body[], constraints: Constraint[] } {
-    const snakeHeadSize = 10;
-    const snakeTailPieceSize = 8;
-
     // get an existing snake color or add a random one
     let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
     if (snakeColors.has(this.snakesOnWorld.length)) {
@@ -135,14 +135,14 @@ export class Physics {
         fillStyle: snakeColor,
       },
     }
-    const head = Bodies.circle(x, y, snakeHeadSize, { ...snakeOptions });
+    const head = Bodies.circle(x, y, SNAKE_HEAD_SIZE, { ...snakeOptions });
     const tail = [];
     const constraints = [];
     for (let i = 1; i <= length; i++) {
       const isFirst = i === 1;
-      const incX = i * snakeHeadSize * (isFirst ? 1.6 : 1.4);
-      const incY = i * snakeHeadSize * (isFirst ? 1.6 : 1.4);
-      const tailPiece = Bodies.circle(x + incX, y - incY, snakeTailPieceSize, {
+      const incX = i * SNAKE_HEAD_SIZE * (isFirst ? 1.6 : 1.4);
+      const incY = i * SNAKE_HEAD_SIZE * (isFirst ? 1.6 : 1.4);
+      const tailPiece = Bodies.circle(x + incX, y - incY, SNAKE_TAIL_SIZE, {
         ...snakeOptions,
         label: 'snake-tail',
       });
@@ -168,8 +168,7 @@ export class Physics {
   }
 
   createFood(x: number, y: number = 500): Body {
-    const foodSize = 24;
-    const halo = Bodies.circle(x, y, foodSize, {
+    const halo = Bodies.circle(x, y, FOOD_SIZE, {
       label: String(GameObjectType.FOOD),
       friction: 0,
       frictionAir: 0.4,
@@ -178,7 +177,7 @@ export class Physics {
         opacity: 0.1,
       },
     });
-    const foodBody = Bodies.rectangle(x, y, foodSize / 1.5, foodSize / 1.5, {
+    const foodBody = Bodies.rectangle(x, y, FOOD_SIZE / 1.5, FOOD_SIZE / 1.5, {
       label: String(GameObjectType.FOOD),
       friction: 0,
       frictionAir: 0.4,
