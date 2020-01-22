@@ -32,7 +32,7 @@ class AI():
         encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='selu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
         x = Flatten()(encoder)
-        x = Dense(units= 256, activation = 'selu')(x)
+        x = Dense(units= 128, activation = 'selu')(x)
         output = Dense(units = 2, activation='tanh')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
