@@ -19,7 +19,7 @@ class AI():
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
         self.sigma = 0.01 # noise standard deviation
         self.alpha = 0.0001 # learning rate
-        self.shape = 32
+        self.shape = 64
         self.levels = 4
         self.model = []
         self.FilePathLog = "./log/"
@@ -27,34 +27,32 @@ class AI():
 
     def buildModel(self):
         input_ = Input(shape=(self.shape,self.shape,1))
-        encoder = Conv2D(32, (3, 3), padding='same',activation ='relu')(input_)
+        encoder = Conv2D(16, kernel_size=(8, 8),strides = (4,4), padding='same',activation ='selu')(input_)
         encoder = MaxPooling2D((2, 2))(encoder)
-        encoder = Conv2D(16, (3, 3), padding='same',activation ='relu')(encoder)
+        encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='selu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
-        x = BatchNormalization()(encoder)
         x = Flatten()(encoder)
-        x = Dense(units= 1024, activation = 'selu')(x)
-        x = Dense(1024, activation='selu')(x) 
-        x = Dense(1024, activation='selu')(x) 
+        x = Dense(units= 256, activation = 'selu')(x)
         output = Dense(units = 2, activation='tanh')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
+        
 
     def getSingleInput(self,data,id):
         return data[data["id"] == id]
 
     def reshaping(self, inputArray):
-        shape = int(np.sqrt(len(inputArray)))
-        inputArray_ = np.reshape(inputArray,(shape, shape))
-        inputArray_ = Image.fromarray(inputArray_, 'L')
-        inputArray_ = inputArray_.resize((self.shape,self.shape))
-        inputArray_ = np.array(inputArray_)
-        inputArray_ = np.reshape(inputArray_,(-1 , self.shape, self.shape,1))
+        shape = int(np.sqrt(len(inputArray))) #get len and width of 2dmatrix
+        inputArray_ = np.reshape(inputArray,(shape, shape)) #reshape 1d to 2d
+        inputArray_ = Image.fromarray(inputArray_, 'L') #convert from np to PIL image
+        inputArray_ = inputArray_.resize((self.shape,self.shape)) #down size image
+        inputArray_ = np.array(inputArray_) #convert PIL image to numpy
+        inputArray_ = np.reshape(inputArray_,(-1 , self.shape, self.shape,1)) #reshape to keras input
         return inputArray_
 
     def preprocessInput(self,data_):
-        inputArray = np.array(data_["matrix"].values[0])
-        inputArray = inputArray/self.levels
+        inputArray = np.array(data_["matrix"].values[0]) 
+        inputArray = inputArray/self.levels #scale to range [0,1]
         inputArray = self.reshaping(inputArray)
         return inputArray
 
@@ -65,8 +63,7 @@ class AI():
         R = self.epoch["energyIntake"].tolist()
         if sum(R) == 0:
             A = len(R) * [1]
-        else:
-            A = (R - np.mean(R)) / np.std(R) 
+        A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution 
         return A
 
     def createNoiseMatrix(self):
@@ -75,13 +72,13 @@ class AI():
         for i in range(self.npop):
             n = [None] * len(w)
             for j in range(len(w)):
-                n[j] = np.random.randn(w[j].size)
+                n[j] = np.random.randn(w[j].size) #adjust weights layer-wise
             self.N[i] = n
        
     def mutateWeights(self, n):
         w = self.getModelWeights()
         for i in range(len(n)):
-            w[i]= w[i] + self.sigma*np.reshape(n[i],w[i].shape)
+            w[i]= w[i] + self.sigma*np.reshape(n[i],w[i].shape) #mutate weights of layers
         return w
 
     def applyNoise(self):
@@ -95,9 +92,9 @@ class AI():
         w = self.getModelWeights()
         A = self.getReward()
         for i in range(len(w)):
-            n_ = np.dot(  np.array(self.N)[:,i].T,A)
+            n_ = np.dot( np.array(self.N)[:,i].T,A) #sum up all the rows of noise matrix for each layer and each row is weighted by A
             n_ = np.reshape(n_,w[i].shape)
-            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_
+            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_ 
         self.model.set_weights(w)
         self.npop = None
         self.W_try = None
