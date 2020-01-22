@@ -218,6 +218,7 @@ export class World implements MessageListener {
         matrix: this.toBitMatrix(snake),
         velocityX: snake.body.velocity.x,
         velocityY: snake.body.velocity.y,
+        id: snake.id,
       },
     }), {});
   }
