@@ -24,7 +24,7 @@ class WebSocketServer:
     def start(self):
         print("server running...")
         return websockets.serve(self.communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
-    
+        
     def processMessageData(self, messageData):
         return pd.DataFrame.from_dict(messageData).T
 
