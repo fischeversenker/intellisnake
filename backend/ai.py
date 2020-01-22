@@ -2,6 +2,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import numpy as np
 import csv
+import json
 import pandas as pd
 from sklearn.preprocessing import QuantileTransformer
 from PIL import Image
@@ -17,13 +18,17 @@ class AI():
         self.N = None # list to store n noiseMatrix
         self.W_try = None # list to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
-        self.sigma = 0.01 # noise standard deviation
-        self.alpha = 0.001 # learning rate
+        self.sigma = 0.1 # noise standard deviation
+        self.alpha = 0.00001 # learning rate
         self.shape = 64
         self.levels = 4
         self.model = []
         self.IDs = {}
         self.FilePathLog = "./log/"
+        self.frameCount = 0
+        self.FramesPerEpoch = 50
+
+
         np.random.seed(1337)
 
     def startWorld(self,data):
@@ -134,7 +139,12 @@ class AI():
           inputArray = self.preprocessInput(data_)
           pred_ = self.makePrediction(id,inputArray)
           outputDict.update([(id_,pred_)],)
-        return outputDict
+
+        self.frameCount = self.frameCount + 1
+        frameProgress = self.frameCount/self.FramesPerEpoch
+        outputJson = json.dumps("{}: {}".format(frameProgress,outputDict))
+
+        return outputJson
 
     def storeEpoch(self,data):
         if self.epoch.empty:
@@ -162,3 +172,6 @@ class AI():
 
     def getIDs(self,data):
         self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))  
+
+    def printFrameCount(self):
+        return self.frameCount/self.FramesPerEpoch
