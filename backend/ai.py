@@ -31,7 +31,6 @@ class AI():
         encoder = MaxPooling2D((2, 2))(encoder)
         encoder = Conv2D(16, (3, 3), padding='same',activation ='relu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
-        x = BatchNormalization()(encoder)
         x = Flatten()(encoder)
         x = Dense(units= 1024, activation = 'selu')(x)
         x = Dense(1024, activation='selu')(x) 
