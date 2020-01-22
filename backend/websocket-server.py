@@ -38,12 +38,12 @@ class WebSocketServer:
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
         data = self.processMessageData(messageData)
-        print(data)
+
         if messageType == "generation":
             if not self.started and not self.reload:
                 if DEBUG_MODE:
                     print("starting...")
-                self.nes.buildModel()
+                self.nes.startWorld(data)
                 if DEBUG_MODE:
                     print("done...")
                 await self.sendMessage(websocket, messageId, "ack", data = {})
