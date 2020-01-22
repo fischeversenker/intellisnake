@@ -8,7 +8,7 @@ from PIL import Image
 from keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, BatchNormalization
 from keras.models import Model
 
-# Based on paper https://arxiv.org/pdf/1703.03864.pdf
+# Evolution works as a Black Box Optimization and is based on paper https://arxiv.org/pdf/1703.03864.pdf
 
 class AI():
     def __init__(self):
@@ -18,12 +18,18 @@ class AI():
         self.W_try = None # list to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
         self.sigma = 0.01 # noise standard deviation
-        self.alpha = 0.0001 # learning rate
+        self.alpha = 0.001 # learning rate
         self.shape = 64
         self.levels = 4
         self.model = []
+        self.IDs = {}
         self.FilePathLog = "./log/"
         np.random.seed(1337)
+
+    def startWorld(self,data):
+        data = data.T
+        self.getIDs(data)
+        self.buildModel()
 
     def buildModel(self):
         input_ = Input(shape=(self.shape,self.shape,1))
@@ -37,7 +43,6 @@ class AI():
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
         
-
     def getSingleInput(self,data,id):
         return data[data["id"] == id]
 
@@ -51,7 +56,7 @@ class AI():
         return inputArray_
 
     def preprocessInput(self,data_):
-        inputArray = np.array(data_["matrix"].values[0]) 
+        inputArray = np.array(data_["matrix"].values) 
         inputArray = inputArray/self.levels #scale to range [0,1]
         inputArray = self.reshaping(inputArray)
         return inputArray
@@ -62,8 +67,10 @@ class AI():
     def getReward(self):
         R = self.epoch["energyIntake"].tolist()
         if sum(R) == 0:
-            A = len(R) * [1]
-        A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution 
+            print("no energyIntake")
+            A = self.npop * [np.random.rand()]
+        else:
+            A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution 
         return A
 
     def createNoiseMatrix(self):
@@ -105,6 +112,9 @@ class AI():
         self.model.set_weights(self.W_try[int(i)])
         pred = self.model.predict(inputArray)
         pred_ = [float(pred[0][0]),float(pred[0][1])]
+        if pred_[0] == None:
+            print("Nan pred!")
+    
         return pred_
              
     def runModel(self,data):
@@ -115,21 +125,25 @@ class AI():
              self.createNoiseMatrix()
         if self.W_try == None:
              self.applyNoise()
+        
         outputDict = {}
-        for id in data["id"]:
+        data["id_internal"] = data["id"].astype(int).map(self.IDs)
+        
+        for id, id_ in zip(data["id_internal"], data["id"]):
           data_  = self.getSingleInput(data,id)
           inputArray = self.preprocessInput(data_)
           pred_ = self.makePrediction(id,inputArray)
-          outputDict.update([(id,pred_)],)
+          outputDict.update([(id_,pred_)],)
         return outputDict
 
     def storeEpoch(self,data):
         if self.epoch.empty:
             self.epoch = data
-        else:
-            for id in data["id"]:
-                df = self.epoch[self.epoch["id"]==id]
-                df_ = data[data["id"]==id]
+        else:       
+            data["id_internal"] = data["id"].astype(int).map(self.IDs)
+            for id in data["id_internal"]:
+                df = self.epoch[self.epoch["id_internal"]==id]
+                df_ = data[data["id_internal"]==id]
                 sum_ = df["energyIntake"] + df_["energyIntake"]
                 self.epoch.loc[self.epoch.id == id, 'energyIntake'] = sum_
 
@@ -146,5 +160,5 @@ class AI():
                 writer.writerow(log)
         f.close()
 
-
-        
+    def getIDs(self,data):
+        self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))      
