@@ -1,326 +1,153 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan  3 18:46:02 2020
-
-@author: azach
-"""
 import os
-import glob
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-import sys
-import asyncio
-import websockets
-import json
-import csv
-# suppress FutuerWarnings from Pandas
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
-
-import pandas as pd
-from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten, concatenate, UpSampling2D, BatchNormalization
-from keras.models import Model,load_model
 import numpy as np
-import math
-import time
-import gc
-from keras.backend.tensorflow_backend import set_session
-from keras.backend.tensorflow_backend import clear_session
-from keras.backend.tensorflow_backend import get_session
-import tensorflow
-import random
-import matplotlib.pyplot as plt
+import csv
+import pandas as pd
+from sklearn.preprocessing import QuantileTransformer
+from PIL import Image
+from keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, BatchNormalization
+from keras.models import Model
+
+# Based on paper https://arxiv.org/pdf/1703.03864.pdf
 
 class AI():
     def __init__(self):
-        self.FilePathModels = "./models/"
+        # hyperparameters
+        self.npop = None # population size
+        self.N = None # list to store n noiseMatrix
+        self.W_try = None # list to store weights
+        self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
+        self.sigma = 0.01 # noise standard deviation
+        self.alpha = 0.0001 # learning rate
+        self.shape = 32
+        self.levels = 4
+        self.model = []
         self.FilePathLog = "./log/"
-        self.FilePathPlot = "./plots/"
-        self.width = 100 #width of input matrix
-        self.height = 100 #height of input matrix
-        self.levels = 4 # number of classes in matrix
-        self.n_auxData = 4 #aux data
-        self.mutationRate = 2 #standard devivation for selection from normal distrubtion on Generation > 0" 
-        self.network = []
-        self.autoencoder = []
-        self.sharedLayers = 4
-        self.nonSurvivorRate = 0 #
-        self.totalEnergyIntake = dict({})
-        self.EnergyIntake = {}
-        self.generation = 0
-        self.Counter = 0
-        self.AdaptionFrequency = 10000 
-        self.AdaptionRate = 0.1 
-        self.trainData = []
-        self.batchSize = 128
-        
-        
-    '''Functions to extract data from messages,
-    reshape inputs and create tensor'''
+        np.random.seed(1337)
 
-    '''reads data from websocket and creates a dataframe for pred'''
-    def df_construct(self, data):
-        df = pd.DataFrame.from_dict(data).T
-        df['individuum'] = df.index
-        df['individuum'] = df['individuum'].astype(str)
-        population = df['individuum'].unique()
-        return df, population
-    
-    #create input tensors
-    '''extract values from dataframe and turns it arrays'''
-    def getAuxInput(self,IndividualEnergyIntake,velocityX,velocityY,energyLevel):
-        return np.asarray([IndividualEnergyIntake,velocityX,velocityY,energyLevel])
-   
-    def createInputs(self, df,individuum):
-        #subset df to single snake data and put values into input arrays
-        df_subset = df[df["individuum"] == individuum]
-        IndividualEnergyIntake =self.totalEnergyIntake[individuum]
-        auxInput =self.getAuxInput(IndividualEnergyIntake,df_subset["velocityX"].values[0],df_subset["velocityY"].values[0],df_subset["energyLevel"].values[0])
-        inputArray =np.asarray(df_subset["matrix"].values[0])
-        inputArray = inputArray/self.levels
-        return inputArray, auxInput
-
-    ##reshaping
-    '''reshape arrays into input tensor'''
-    # def reshaping(self, inputArray,auxInput):
-    #     inputArray_ = inputArray.reshape(-1,self.width, self.height,self.levels) #Conv2D accepts 3D array
-    #     auxInput_ = auxInput.reshape(-1,self.n_auxData)
-    #     return inputArray_,auxInput_
-
-    def reshaping(self, inputArray, auxInput):
-        inputArray_ = np.reshape(inputArray,(-1,self.width,self.height,1))
-        auxInput_ = auxInput.reshape(-1,self.n_auxData)
-        return inputArray_,auxInput_
-
-    def buildAutoEncoder(self):
-        ##input placeholder
-        #matrix input
-        #mainInput = Input(shape=(self.width, self.height, self.levels))
-        mainInput = Input(shape=(self.width, self.height,1))
-        #CNN Network for processing matrix Data
-        encoder = Conv2D(32, (3, 3), padding='same',activation ='relu')(mainInput)
+    def buildModel(self):
+        input_ = Input(shape=(self.shape,self.shape,1))
+        encoder = Conv2D(32, (3, 3), padding='same',activation ='relu')(input_)
         encoder = MaxPooling2D((2, 2))(encoder)
         encoder = Conv2D(16, (3, 3), padding='same',activation ='relu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
-        
-        decoder = Conv2D(16, (3, 3), padding='same',activation ='relu')(encoder)
-        decoder = UpSampling2D((2, 2))(decoder)
-        decoder = Conv2D(32, (3, 3), activation='relu', padding='same')(decoder)
-        decoder = UpSampling2D((2, 2))(decoder)
-        decoder = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(decoder)
-
-        autoencoder = Model(mainInput, decoder)
-        autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-        return autoencoder
-
-    '''builds a model and compiles it with random weights'''
-    def buildNetwork(self):
-        ##input placeholder
-        #matrix input
-        mainInput = Input(shape=(self.width, self.height, 1))
-        #meta input (Aka energy level, direction, velocity)
-        auxiliaryInput = Input(shape=(self.n_auxData,), name='aux_input')
-
-        #CNN Network for processing matrix Data
-        encoder = Conv2D(32, (3, 3), padding='same',activation ='relu')(mainInput)
-        encoder = MaxPooling2D((2, 2))(encoder)
-        encoder = Conv2D(16, (3, 3), padding='same',activation ='relu')(encoder)
-        encoder = MaxPooling2D((2, 2))(encoder)
+        x = BatchNormalization()(encoder)
         x = Flatten()(encoder)
+        x = Dense(units= 1024, activation = 'selu')(x)
+        x = Dense(512, activation='selu')(x) 
+        x = Dense(256, activation='selu')(x) 
+        output = Dense(units = 2, activation='tanh')(x) 
+        self.model = Model(inputs=[input_], outputs=[output])
+        self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
 
-        x = Dense(units= 64, activation = 'selu')(x)
-        x = Dense(64, activation='selu')(x) 
-        x = Dense(64, activation='selu')(x) 
-        x = Dense(64, activation='selu')(x) 
+    def getSingleInput(self,data,id):
+        return data[data["id"] == id]
 
-        dir_output = Dense(1, activation='tanh', name='dir_output')(x)
-        velocity_output = Dense(1, activation='tanh', name='velocity_output')(x)
-        network = Model(inputs=[mainInput, auxiliaryInput], outputs=[dir_output, velocity_output])
-        network.compile(optimizer='rmsprop', loss='binary_crossentropy',
-                    loss_weights=[1., 0.2])
-        return network
-    '''Input: array, rate = mutationRate or variance Output: array
-       takes np.array containing weights from an individual,
-       multiplies with random selection from normal distrubtion with center 
-       and SD = mutationRate
-    '''
-    def getCurrentEnergy(self,listA,listB):
-        return dict(zip(listA,listB))
-    ''
-    def preprocessEnergyIntake(self,population,energyIntake):
-        currentEnergyIntake = self.getCurrentEnergy(population,energyIntake)
-        if not self.totalEnergyIntake:
-            self.EnergyIntake = self.getCurrentEnergy(population,([0] * len(population)))
+    def reshaping(self, inputArray):
+        shape = int(np.sqrt(len(inputArray)))
+        inputArray_ = np.reshape(inputArray,(shape, shape))
+        inputArray_ = Image.fromarray(inputArray_, 'L')
+        inputArray_ = inputArray_.resize((self.shape,self.shape))
+        inputArray_ = np.array(inputArray_)
+        inputArray_ = np.reshape(inputArray_,(-1 , self.shape, self.shape,1))
+        return inputArray_
+
+    def preprocessInput(self,data_):
+        inputArray = np.array(data_["matrix"].values[0])
+        inputArray = inputArray/self.levels
+        inputArray = self.reshaping(inputArray)
+        return inputArray
+
+    def getModelWeights(self):
+        return np.array(self.model.get_weights())
+
+    def getReward(self):
+        R = self.epoch["energyIntake"].tolist()
+        if sum(R) == 0:
+            A = len(R) * [1]
         else:
-            for k, v in currentEnergyIntake.items():
-                self.EnergyIntake[k] = v - self.totalEnergyIntake.get(k, 0)
-            #map energyIntake to 0 or 1  
-            for key, value in self.EnergyIntake.items():
-                if value > 0:
-                    self.EnergyIntake[key] = 1
-        self.totalEnergyIntake.update(currentEnergyIntake)
-        return self
+            A = (R - np.mean(R)) / np.std(R) 
+        return A
 
-    # def mutateWeights(self, weights, rate):
-    #     lower = 1/rate
-    #     upper = rate - lower
-    #     mutator = random.uniform(lower,upper)
-    #     return weights*mutator 
+    def createNoiseMatrix(self):
+        w = self.getModelWeights()
+        self.N = [None] * self.npop
+        for i in range(self.npop):
+            n = [None] * len(w)
+            for j in range(len(w)):
+                n[j] = np.random.randn(w[j].size)
+            self.N[i] = n
+       
+    def mutateWeights(self, n):
+        w = self.getModelWeights()
+        for i in range(len(n)):
+            w[i]= w[i] + self.sigma*np.reshape(n[i],w[i].shape)
+        return w
 
+    def applyNoise(self):
+        self.W_try = []
+        w = self.getModelWeights()
+        for i in range(self.npop):
+            w_try = self.mutateWeights(self.N[i]) 
+            self.W_try.append(w_try)  
+       
+    def updateModel(self):
+        w = self.getModelWeights()
+        A = self.getReward()
+        for i in range(len(w)):
+            n_ = np.dot(  np.array(self.N)[:,i].T,A)
+            n_ = np.reshape(n_,w[i].shape)
+            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_
+        self.model.set_weights(w)
+        self.npop = None
+        self.W_try = None
+        self.N = None
+        self.epoch = pd.DataFrame()
     
-    def mutateWeights(self, weights, rate):
-        mutator = random.uniform(0,1)
-        if random.uniform(0,1) > 0.5:
-            return weights*mutator 
-        else:
-            return weights/mutator 
-    
-    def softmax(self,x):
-        x= np.asarray(x)
-        e_x = np.exp(x - np.max(x))
-        return e_x / e_x.sum()
-
-    def selectSurvivors(self):
-        oldPopulation=list(self.totalEnergyIntake.keys()) 
-        selectionFeature = list(self.totalEnergyIntake.values())
-        try:
-             proba = self.softmax(selectionFeature) 
-        except:
-            survivors = random.choices(oldPopulation,k=len(oldPopulation))
-        else:
-            survivors = list(np.random.choice(oldPopulation, (len(oldPopulation)-int(round(len(oldPopulation)*self.nonSurvivorRate))), p=proba,replace=True))
-        nonSurvivors = list(set(oldPopulation) - set(survivors))
-        for i in range(len(nonSurvivors)):
-            survivors.append(random.choice((nonSurvivors)))
-        return survivors
-    
-    '''Input: population is list of all IDs from individuums in population
-       Build models for each member of the population  
-       Output: dictionary with key "ID" of individuum and value with "weights" as np.array 
-    '''
-    def evolveSurvivors(self,weightsDict,population):
-        self.trainAutoEncoder()
-        for individuum in population:
-            self.network.set_weights(weightsDict[individuum])
-                 #transfer weights to cnn
-            for j in range(self.sharedLayers):
-                self.network.layers[j].set_weights( np.array(self.autoencoder.layers[j].get_weights()))
-            weightsDict[individuum]=  np.array(self.network.get_weights())
-        return weightsDict
-
-    def initializeWeights(self, population):
-        self.autoencoder = self.buildAutoEncoder()
-        models= []
-        for individuum in population: 
-            self.network = self.buildNetwork()
-            weights = np.array(self.network.get_weights())
-            models.append(weights)
-        weightsDict = dict(zip(population,models))
-        return weightsDict
-
-    ''' creates weights for individuums of next generation'''
-    def reinitializeWeights(self,population,survivors,weightsDict):
-        if self.Counter == self.AdaptionFrequency:
-            self.mutationRate = self.mutationRate*self.AdaptionRate
-            self.Counter = 0
-
-        self.totalEnergyIntake = {}
-        modelWeights = []    
-        print("Number of Survivors: {}".format(len(np.unique(survivors))))
-        for i in range(len(population)):
-            weights = weightsDict[survivors[i]]
-            weights = np.array(self.network.get_weights())
-            newWeights = self.mutateWeights(weights, self.mutationRate)
-            modelWeights.append(np.array(newWeights))
-
-        weightsDict = dict(zip(population,modelWeights))
-        weightsDict=self.evolveSurvivors(weightsDict,population)
-        self.generation = self.generation + 1
-        self.Counter = self.Counter = 0 + 1
-        self.trainData = []
-        return weightsDict
-        
-    def trainAutoEncoder(self):
-            #train
-            if len(self.trainData) >= self.batchSize:
-                trainX = random.sample(self.trainData,k=self.batchSize)
-                testX = random.sample(self.trainData,k=self.batchSize)
-            else:
-                self.batchSize = len(self.trainData)
-                trainX = self.trainData
-                testX = trainX
-                self.batchSize = len(self.trainData)
-            self.autoencoder.fit(np.array(trainX), np.array(trainX),epochs=10,shuffle=True,batch_size=self.batchSize)
-            self.autoencoder.save("{}autoencoder.h5".format(self.FilePathModels))
-            if self.Counter == 0:
-                decoded_imgs = self.autoencoder.predict(np.array(testX))
-                n = 10
-                plt.figure(figsize=(20, 4))
-                for i in range(n):
-                    ax = plt.subplot(2, n, i+1)
-                    plt.imshow(testX[i].reshape(100, 100))
-                    plt.gray()
-                    ax.get_xaxis().set_visible(False)
-                    ax.get_yaxis().set_visible(False)
-
-                    # display reconstruction
-                    ax = plt.subplot(2, n, i+1 + n)
-                    plt.imshow(decoded_imgs[i].reshape(100, 100))
-                    plt.gray()
-                    ax.get_xaxis().set_visible(False)
-                    ax.get_yaxis().set_visible(False)
-                    plt.savefig("{}{}".format(self.FilePathPlot,"autoencoder.png"))
-            #plt.show()
-   
-
-
-    '''uses network with inputweights for prediction, returns array'''
-    def prediction(self,weights,inputArray_, auxInput_):
-        self.network.set_weights(weights)
-        pred = self.network.predict([inputArray_, auxInput_])
-        return [float(pred[1][0,0]),float(pred[0][0,0])]
-
-    #create inputs&run pred
-    '''processes Inputs for each Individuum and returns a new output'''
-    def populationOperator(self,population,df,weightsDict):
-        energyIntake = df["energyIntake"].tolist()
-        self.preprocessEnergyIntake(population,energyIntake)
+    def makePrediction(self,i,inputArray):
+        self.model.set_weights(self.W_try[int(i)])
+        pred = self.model.predict(inputArray)
+        pred_ = [float(pred[0][0]),float(pred[0][1])]
+        return pred_
+             
+    def runModel(self,data):
+        self.storeEpoch(data)
+        if self.npop == None:
+            self.npop = len(data)
+        if self.N == None:
+             self.createNoiseMatrix()
+        if self.W_try == None:
+             self.applyNoise()
         outputDict = {}
-        for individuum in population:
-            inputArray, auxInput = self.createInputs(df,individuum)
-            inputArray_, auxInput_ = self.reshaping(inputArray,auxInput)
-            self.trainData.append(np.reshape(inputArray_,(100,100,1)))
-            pred_ = self.prediction(weightsDict[individuum],inputArray_, auxInput_)
-            print("Raw Input: {}".format(inputArray))
-            print("Transformed Input: {}".format(inputArray_))
-            print("Prediction: {}".format(pred_))
-            outputDict.update([(individuum,pred_)],)
-        return outputDict 
+        for id in data["id"]:
+          data_  = self.getSingleInput(data,id)
+          inputArray = self.preprocessInput(data_)
+          pred_ = self.makePrediction(id,inputArray)
+          outputDict.update([(id,pred_)],)
+        return outputDict
 
-    '''loads model from list with model name'''
-    def loadModel(self, population):
-        files_path = os.path.join(self.FilePathModels , '*')
-        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True) 
-        models = []
-        if files:
-            for i in range(len(population)):
-                self.network= load_model('{}'.format(random.choice(files)))
-                models.append(np.array(self.network.get_weights()))
-            return dict(zip(population,models))
+    def storeEpoch(self,data):
+        if self.epoch.empty:
+            self.epoch = data
+        else:
+            for id in data["id"]:
+                df = self.epoch[self.epoch["id"]==id]
+                df_ = data[data["id"]==id]
+                sum_ = df["energyIntake"] + df_["energyIntake"]
+                self.epoch.loc[self.epoch.id == id, 'energyIntake'] = sum_
 
-    def saveModel(self,individuum, weights):
-        self.network.set_weights(weights)
-        self.network.save("{}{}.h5".format(self.FilePathModels,individuum))
-
-    def logging(self,fileName):
-        log =[self.generation,sum(self.totalEnergyIntake.values() )]
+    def logging(self,generation):
+        log =[generation,sum(self.epoch["energyIntake"])]
         print("Generation: {}, Overall EnergyIntake: {}".format(log[0],log[1]))
         try:
-            with open('{}{}.csv'.format(self.FilePathLog,fileName), 'a') as f:
+            with open('{}log.csv'.format(self.FilePathLog), 'a') as f:
                 writer = csv.writer(f)
                 writer.writerow(log)
         except IOError:
-            with open('{}{}.csv'.format(self.FilePathLog,fileName), 'w') as f:
+            with open('{}log.csv'.format(self.FilePathLog), 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(log)
         f.close()
+
+
+        
