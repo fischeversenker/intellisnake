@@ -17,7 +17,7 @@ class AI():
         self.N = None # list to store n noiseMatrix
         self.W_try = None # list to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
-        self.sigma = 0.01 # noise standard deviation
+        self.sigma = 0.1 # noise standard deviation
         self.alpha = 0.001 # learning rate
         self.shape = 64
         self.levels = 4
@@ -141,11 +141,11 @@ class AI():
             self.epoch = data
         else:       
             data["id_internal"] = data["id"].astype(int).map(self.IDs)
-            for id in data["id_internal"]:
+            for id,id_ in zip(data["id_internal"],data["id"]):
                 df = self.epoch[self.epoch["id_internal"]==id]
                 df_ = data[data["id_internal"]==id]
                 sum_ = df["energyIntake"] + df_["energyIntake"]
-                self.epoch.loc[self.epoch.id == id, 'energyIntake'] = sum_
+                self.epoch.loc[self.epoch.id == id_, 'energyIntake'] = sum_
 
     def logging(self,generation):
         log =[generation,sum(self.epoch["energyIntake"])]
