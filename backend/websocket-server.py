@@ -83,6 +83,10 @@ class WebSocketServer:
                     print("predicting...")
                 output_json = self.nes.runModel(data)
                 await self.sendMessage(websocket, messageId, "data", output_json)
+                if self.nes.printFrameCount() == 1:
+                    if DEBUG_MODE:
+                     print("new generation...")
+                    await self.sendMessage(websocket, messageId, "generation", self.generation)
             else:
                 await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
 
@@ -94,6 +98,7 @@ class WebSocketServer:
         if DEBUG_MODE:
             print("sending {}".format(messageType))
         message = { "messageId": messageId, "type": messageType, "data": data }
+
         return await webSocket.send(json.dumps(message))
 
 
