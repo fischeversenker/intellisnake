@@ -83,7 +83,6 @@ class WebSocketServer:
                     print("predicting...")
                 output_json = self.nes.runModel(data)
                 await self.sendMessage(websocket, messageId, "data", output_json)
-                print(self.nes.printFrameCount())
                 if self.nes.printFrameCount() == 1.0:
                     if DEBUG_MODE:
                      print("new generation...")
