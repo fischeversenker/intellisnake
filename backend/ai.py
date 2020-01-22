@@ -41,10 +41,10 @@ class AI():
         encoder = MaxPooling2D((2, 2))(encoder)
         x = Flatten()(encoder)
         x = Dense(units= 128, activation = 'selu')(x)
-        output = Dense(units = 2, activation='tanh')(x) 
+        output = Dense(units = 2, activation='tanh')(x)
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
-        
+
     def getSingleInput(self,data,id):
         return data[data["id"] == id]
 
@@ -58,7 +58,7 @@ class AI():
         return inputArray_
 
     def preprocessInput(self,data_):
-        inputArray = np.array(data_["matrix"].values) 
+        inputArray = np.array(data_["matrix"].values)
         inputArray = inputArray/self.levels #scale to range [0,1]
         inputArray = self.reshaping(inputArray)
         return inputArray
@@ -72,7 +72,7 @@ class AI():
             print("no energyIntake")
             A = self.npop * [np.random.rand()]
         else:
-            A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution 
+            A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
         return A
 
     def createNoiseMatrix(self):
@@ -83,7 +83,7 @@ class AI():
             for j in range(len(w)):
                 n[j] = np.random.randn(w[j].size) #adjust weights layer-wise
             self.N[i] = n
-       
+
     def mutateWeights(self, n):
         w = self.getModelWeights()
         for i in range(len(n)):
@@ -94,31 +94,31 @@ class AI():
         self.W_try = []
         w = self.getModelWeights()
         for i in range(self.npop):
-            w_try = self.mutateWeights(self.N[i]) 
-            self.W_try.append(w_try)  
-       
+            w_try = self.mutateWeights(self.N[i])
+            self.W_try.append(w_try)
+
     def updateModel(self):
         w = self.getModelWeights()
         A = self.getReward()
         for i in range(len(w)):
             n_ = np.dot( np.array(self.N)[:,i].T,A) #sum up all the rows of noise matrix for each layer and each row is weighted by A
             n_ = np.reshape(n_,w[i].shape)
-            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_ 
+            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_
         self.model.set_weights(w)
         self.npop = None
         self.W_try = None
         self.N = None
         self.epoch = pd.DataFrame()
-    
+
     def makePrediction(self,i,inputArray):
         self.model.set_weights(self.W_try[int(i)])
         pred = self.model.predict(inputArray)
         pred_ = [float(pred[0][0]),float(pred[0][1])]
         if pred_[0] == None:
             print("Nan pred!")
-    
+
         return pred_
-             
+
     def runModel(self,data):
         self.storeEpoch(data)
         if self.npop == None:
@@ -127,10 +127,10 @@ class AI():
              self.createNoiseMatrix()
         if self.W_try == None:
              self.applyNoise()
-        
+
         outputDict = {}
         data["id_internal"] = data["id"].astype(int).map(self.IDs)
-        
+
         for id, id_ in zip(data["id_internal"], data["id"]):
           data_  = self.getSingleInput(data,id)
           inputArray = self.preprocessInput(data_)
@@ -140,18 +140,15 @@ class AI():
         self.frameCount = self.frameCount + 1
         frameProgress = self.frameCount/self.FramesPerEpoch
 
-        output = {
-                    "progress": frameProgress,
-                    "prediction": outputDict
-                    }
-        outputJson = json.dumps("{}: {}".format(frameDict,output))
-
-        return outputJson
+        return {
+            "progress": frameProgress,
+            "prediction": outputDict
+        }
 
     def storeEpoch(self,data):
         if self.epoch.empty:
             self.epoch = data
-        else:       
+        else:
             data["id_internal"] = data["id"].astype(int).map(self.IDs)
             for id,id_ in zip(data["id_internal"],data["id"]):
                 df = self.epoch[self.epoch["id_internal"]==id]
@@ -173,7 +170,7 @@ class AI():
         f.close()
 
     def getIDs(self,data):
-        self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))  
+        self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))
 
     def printFrameCount(self):
         return self.frameCount/self.FramesPerEpoch
