@@ -23,43 +23,56 @@ FE and BE communicate via WebSocket connection.
 }
 ```
 
-### Message Types:
-#### type: start (sent only once by client)
-client will wait for message of type `ack` from server after this before starting the world
-
-#### type: reproduce (sent only by client)
-data contains `parentId` and `childId`
-
-#### type: epoch (sent only by client)
-contains no data
-
-#### type: snakes
-Client: contains metadata for each snake (energyLevel, matrix, velocity)
-Server: contains predictions of new velocities for each snake
-
-#### type: ack (sent only by server)
-contains no data
-
 ### Protocol
 ```
-C: type: start
-S: type: ack
-
-C: type: snakes
-S: type: snakes
-C: type: reproduce
-S: type: ack
-C: type: snakes
-S: type: snakes
+FE -> BE:
+  {
+    messageId: [0..],
+    type: generation,
+    data: { snakeIds: [a, b, c, ...] }
+  }
+BE -> FE:
+  {
+    messageId: [0..],
+    type: generation,
+    data: { generation: [0..] }
+  }
+FE -> BE:
+  {
+    messageId: [0..],
+    type: data,
+    data: { 0: { id: 0, ... }, 1: { id: 1, ... } }
+  }
+BE -> FE:
+  {
+    messageId: [0..],
+    type: data,
+    data: { prediction: { 0: [a, b], 1: [...] }, progress: [0..1] }
+  }
+FE -> BE:
+  {
+    messageId: [0..],
+    type: data,
+    data: { 0: { id: 0, ... }, 1: { id: 1, ... } }
+  }
+BE -> FE:
+  {
+    messageId: [0..],
+    type: data,
+    data: { prediction: { 0: [a, b], 1: [...] }, progress: [0..1] }
+  }
 ...
-C: type: reproduce
-S: type: ack
-C: type: snakes
-S: type: snakes
+BE -> FE:
+  {
+    messageId: [0..],
+    type: generation,
+    data: { generation: 1 }
+  }
+FE -> BE:
+  {
+    messageId: [0..],
+    type: data,
+    data: { 0: { id: 0, ... }, 1: { id: 1, ... } }
+  }
 ...
-
-C: type: epoch
-S: type: ack
-C: type: snakes
-S: type: snakes
 ```

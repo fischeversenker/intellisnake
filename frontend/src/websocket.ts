@@ -12,6 +12,8 @@ export type Message = {
   data?: any;
 }
 
+export type MessageId = number;
+
 export interface MessageListener {
   onMessage: (message: Message) => void;
 }
@@ -46,7 +48,7 @@ export class Websocket {
     this.listeners.forEach(listener => listener.onMessage(JSON.parse(evt.data)));
   }
 
-  send(data: Message): number {
+  send(data: Message): MessageId {
     if (this.nativeWebsocket.readyState === WebSocket.OPEN) {
       this.nativeWebsocket.send(JSON.stringify({
         ...data,

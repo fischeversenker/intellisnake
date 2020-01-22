@@ -4,7 +4,7 @@ import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
 import { GameObject, GameObjectType } from "./utils";
-import { Message, MessageListener, MessageType, Websocket } from "./websocket";
+import { Message, MessageListener, MessageType, Websocket, MessageId } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
 export const GENERATION_SNAKE_COUNT = 20;
@@ -15,17 +15,15 @@ export class World implements MessageListener {
 
   id = worldCount++;
   running = false;
-  startTime: number = 0;
 
   private websocket: Websocket;
-  private pendingWebSocketRequests: number[] = [];
+  private pendingWebSocketRequests: MessageId[] = [];
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
 
   champions: Snake[] = [];
 
   constructor(
-    private onNewEpoch: Function,
     public generationCount: number = 0,
     private physics: Physics,
     private width: number,
@@ -43,7 +41,6 @@ export class World implements MessageListener {
     }
 
     this.websocket = Websocket.getInstance();
-    this.websocket.registerListener(this);
     console.log('[WORLD]: ... ready');
   }
 
@@ -53,14 +50,12 @@ export class World implements MessageListener {
 
   begin() {
     this.running = true;
-    this.startTime = Date.now();
     this.physics.run();
   }
 
   stop() {
     this.running = false;
     this.physics.stop();
-    this.startTime = Infinity;
   }
 
   destroy() {
@@ -71,26 +66,12 @@ export class World implements MessageListener {
     Events.off(this.physics.engine, 'collisionStart', this.handleCollissions);
 
     this.gameObjects = [];
-    this.websocket.removeListener(this);
   }
 
   update = () => {
     if (!this.running) {
       console.log('[WORLD]: updating but not running (kind of a todo tbh)');
       return;
-    }
-
-    if (Date.now() - this.startTime > GENERATION_DURATION_MS) {
-      console.log('[WORLD]: started new generation because time ran out');
-      this.stop();
-      this.champions = [...this.aliveSnakes];
-      return this.onNewEpoch();
-    }
-
-    if (this.aliveSnakes.length === 0) {
-      console.log('[WORLD]: starting new generation because there are no snakes left');
-      this.stop();
-      return this.onNewEpoch();
     }
 
     if (Math.random() > 0.99) {
@@ -171,25 +152,23 @@ export class World implements MessageListener {
 
   onMessage(message: Message) {
     switch (message.type) {
-      case MessageType.ACK:
-        if (!this.physics.engine.enabled) {
-          this.begin();
-        }
-        break;
       case MessageType.ERROR:
         console.log(`[WORLD]: <<< received error: "${message.data}"`);
         this.stop();
         break;
       case MessageType.DATA:
-        for (let destination in message.data) {
+        if (!message.data.prediction) {
+          break;
+        }
+        for (let destination in message.data.prediction) {
           let snake = this.snakes.find(gO => Number(gO.id) === Number(destination));
           if (snake && snake.updateVelocity) {
-            const x = message.data[snake.id][0];
-            const y = message.data[snake.id][1];
+            const x = message.data.prediction[snake.id][0];
+            const y = message.data.prediction[snake.id][1];
             snake.updateVelocity(Vector.create(x, y));
           }
         }
-        break
+        break;
       default:
         console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
     }
@@ -213,12 +192,10 @@ export class World implements MessageListener {
     return this.aliveSnakes.reduce((acc, snake) => ({
       ...acc,
       [snake.id]: {
+        id: snake.id,
         energyLevel: snake.energyLevel,
         energyIntake: snake.energyIntake,
         matrix: this.toBitMatrix(snake),
-        velocityX: snake.body.velocity.x,
-        velocityY: snake.body.velocity.y,
-        id: snake.id,
       },
     }), {});
   }
