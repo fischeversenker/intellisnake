@@ -19,7 +19,7 @@ class AI():
         self.W_try = None # list to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.00001 # learning rate
+        self.alpha = 0.01 # learning rate
         self.shape = 64
         self.levels = 4
         self.model = []
@@ -27,9 +27,6 @@ class AI():
         self.FilePathLog = "./log/"
         self.frameCount = 0
         self.FramesPerEpoch = 50
-
-
-        np.random.seed(1337)
 
     def startWorld(self,data):
         data = data.T
@@ -142,7 +139,12 @@ class AI():
 
         self.frameCount = self.frameCount + 1
         frameProgress = self.frameCount/self.FramesPerEpoch
-        outputJson = json.dumps("{}: {}".format(frameProgress,outputDict))
+
+        output = {
+                    "progress": frameProgress,
+                    "prediction": outputDict
+                    }
+        outputJson = json.dumps("{}: {}".format(frameDict,output))
 
         return outputJson
 
