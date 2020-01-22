@@ -161,4 +161,4 @@ class AI():
         f.close()
 
     def getIDs(self,data):
-        self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))      
+        self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))  

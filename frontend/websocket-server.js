@@ -9,11 +9,14 @@ wss.on('connection', function connection(ws) {
     if (data.type === 'generation' || data.type === 'reproduce') {
       setTimeout(() => {
         ws.send(JSON.stringify({ messageId: data.messageId, type: 'ack', data: {} }));
-      }, 2000);
+      }, 500);
     } else {
       const ids = Object.keys(data.data);
       const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] })).reduce((acc, pos) => ({...acc, ...pos}), {});
-      resultData["0"] = [1, -1];
+      // use this for circular movement of all snakes
+      // const x = Math.cos(Date.now() / 800);
+      // const y = Math.sin(Date.now() / 800);
+      // const resultData = ids.map(id => ({ [id]: [x, y] })).reduce((acc, pos) => ({...acc, ...pos}), {});
 
       setTimeout(() => {
         ws.send(JSON.stringify({

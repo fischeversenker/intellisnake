@@ -14,10 +14,6 @@ body, html {
   justify-content: center;
 }
 
-canvas {
-  transform: scale(3);
-}
-
 .debug {
   box-sizing: border-box;
   position: fixed;

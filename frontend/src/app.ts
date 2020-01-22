@@ -1,12 +1,11 @@
-import { Snake } from './snake.js';
-import { Message, MessageListener, Websocket } from './websocket.js';
-import { World } from './world.js';
+import { Physics, STARTING_BODY_ID } from './physics';
+import { Snake } from './snake';
+import { Message, MessageListener, MessageType, Websocket } from './websocket';
+import { GENERATION_SNAKE_COUNT, World } from './world';
 
 export const GENERATION_DURATION_MS = 30 * 1000;
 
 export class App implements MessageListener {
-  private canvas: HTMLCanvasElement;
-  private context: CanvasRenderingContext2D;
   private debuggerElement: HTMLElement;
   private resetButton: HTMLElement;
   private websocket: Websocket;
@@ -15,18 +14,14 @@ export class App implements MessageListener {
   private lastMessage = 0;
   private lastAckData: any;
   private lastSurvivors: Snake[] = [];
+  private physics: Physics;
+  private waitingForNewEpoch = false;
 
   constructor(
+    private rootElement: HTMLElement,
     private width: number,
     private height: number,
-    private rootElement: HTMLElement,
   ) {
-    this.canvas = document.createElement('canvas');
-    this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.rootElement.appendChild(this.canvas);
-
     this.debuggerElement = document.createElement('div');
     this.debuggerElement.classList.add('debug');
     this.rootElement.appendChild(this.debuggerElement);
@@ -39,43 +34,56 @@ export class App implements MessageListener {
     });
     this.rootElement.appendChild(this.resetButton);
 
+    const mainElement = document.querySelector('#main') as HTMLElement;
+    this.physics = new Physics(mainElement, this.width, this.height);
+
     this.websocket = Websocket.getInstance(evt => this.onWebsocketOpen(evt), evt => this.onWebsocketClose(evt));
     this.websocket.registerListener(this);
   }
 
   onWebsocketOpen(evt: any): void {
-    this.startNewWorld();
+    this.onNewEpoch();
   }
 
   onWebsocketClose(evt: any): void {
-    this.world!.stop(true);
     console.log('[MAIN]:', evt);
+    if (this.world) {
+      this.world.stop();
+      delete this.world;
+    }
   }
 
   onMessage(message: Message) {
     this.lastMessage = Date.now();
-    if (message.type === 'ack' && message.data) {
-      this.lastAckData = message.data;
+    if (this.waitingForNewEpoch && message.type === 'ack') {
+      this.world = new World(() => this.onNewEpoch(), this.generationCount, this.physics, this.width, this.height);
+      this.world.begin();
+      this.waitingForNewEpoch = false;
     }
   }
 
   init() {
     document.addEventListener('keydown', (evt) => {
       if (evt.key === 'r' && !evt.ctrlKey) {
-        this.startNewWorld();
+        this.sendGenerationMessage();
+      }
+      if (evt.key === 's' && !evt.ctrlKey && this.world) {
+        this.world.stop();
       }
     });
   }
 
-  startNewWorld() {
-    if (this.world) {
-      this.world.destroy();
+  sendGenerationMessage() {
+    // TODO: currently we use the first "generation" WS message to send the snake ids to initialize the AI
+    // would be nicer to either
+    // - get the ids in the initial ack from the AI
+    // - lets assume ids in range [0..NUMBER_OF_SNAKES] and instead of the actual ids just send the
+    //   number of snakes in the "generation" message
+    const snakeIds: string[] = [];
+    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
+      snakeIds.push(String(STARTING_BODY_ID + i * 21));
     }
-
-    const newWorld = new World(this.canvas, this.context, () => this.onNewEpoch(), this.generationCount);
-    this.world = newWorld;
-
-    requestAnimationFrame(() => this.drawWorldInfo());
+    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds } });
   }
 
   drawWorldInfo() {
@@ -93,7 +101,7 @@ export class App implements MessageListener {
         `<div>Last ack data:</div><div>${this.lastAckData ? Object.keys(this.lastAckData) : 'null'}</div>`,
       );
 
-      if (this.world.running) {
+      if (true /* this.world.running */) {
         infoItems.push(`<div>Snakes alive:</div><div>${this.world.snakes.length}</div>`);
         const maxSnake = this.world.snakes.reduce((acc: any, snake) => {
           if (!acc || snake.energyLevel > acc.energyLevel) {
@@ -115,10 +123,18 @@ export class App implements MessageListener {
   }
 
   onNewEpoch() {
-    setTimeout(() => {
-      this.generationCount++;
-      this.lastSurvivors = this.world!.champions;
-      this.startNewWorld();
-    }, 300);
+    if (!this.waitingForNewEpoch) {
+      setTimeout(() => {
+        this.generationCount++;
+
+        if (this.world) {
+          this.lastSurvivors = this.world.champions;
+          this.world.destroy();
+        }
+
+        this.sendGenerationMessage();
+      }, 300);
+      this.waitingForNewEpoch = true;
+    }
   }
 }

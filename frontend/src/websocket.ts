@@ -16,7 +16,7 @@ export interface MessageListener {
   onMessage: (message: Message) => void;
 }
 
-export class Websocket implements MessageListener {
+export class Websocket {
   private static instance: Websocket;
   private nativeWebsocket: WebSocket;
   private messageCount = 0;
