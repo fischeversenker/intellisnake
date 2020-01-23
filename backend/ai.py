@@ -80,7 +80,7 @@ class AI():
         for i in range(self.npop):
             n = [None] * len(w)
             for j in range(len(w)):
-                n[j] = np.random.randn(w[j].size) #adjust weights layer-wise
+                n[j] = np.random.randint(1,5,w[j].size) #adjust weights layer-wise
             self.N[i] = n
 
     def mutateWeights(self, n):
