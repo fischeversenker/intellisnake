@@ -70,9 +70,8 @@ class AI():
         R = self.epoch["energyIntake"].tolist()
         if sum(R) == 0:
             print("no energyIntake")
-            A = self.npop * [np.random.rand()]
-        else:
-            A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
+            R = self.npop * [np.random.rand()]
+        A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
         return A
 
     def createNoiseMatrix(self):
