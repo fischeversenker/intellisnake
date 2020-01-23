@@ -7,7 +7,7 @@ import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 from ai import AI
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 class WebSocketServer:
@@ -38,7 +38,7 @@ class WebSocketServer:
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
         data = self.processMessageData(messageData)
-        print("messageType:{}".format(messageType))
+      
         if messageType == "generation":
             if not self.started and not self.reload:
                 if DEBUG_MODE:
@@ -69,7 +69,6 @@ class WebSocketServer:
                 if self.nes.printFrameCount() == 1:
                     if DEBUG_MODE:
                         print("new generation...")
-                    print("logging")
                     self.nes.logging(self.generation)
                     self.nes.updateModel()
                     self.generation = self.generation +1
