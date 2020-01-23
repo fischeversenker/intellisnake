@@ -26,7 +26,7 @@ class AI():
         self.IDs = {}
         self.FilePathLog = "./log/"
         self.frameCount = 0
-        self.FramesPerEpoch = 50
+        self.FramesPerEpoch = 30
 
     def startWorld(self,data):
         data = data.T
@@ -141,8 +141,8 @@ class AI():
         frameProgress = self.frameCount/self.FramesPerEpoch
 
         return {
-            "progress": frameProgress,
-            "prediction": outputDict
+            "prediction": outputDict,
+            "progress": [frameProgress]
         }
 
     def storeEpoch(self,data):
@@ -157,6 +157,7 @@ class AI():
                 self.epoch.loc[self.epoch.id == id_, 'energyIntake'] = sum_
 
     def logging(self,generation):
+        self.frameCount = 0
         log =[generation,sum(self.epoch["energyIntake"])]
         print("Generation: {}, Overall EnergyIntake: {}".format(log[0],log[1]))
         try:
