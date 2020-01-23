@@ -38,7 +38,7 @@ class WebSocketServer:
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
         data = self.processMessageData(messageData)
-
+        print("messageType:{}".format(messageType))
         if messageType == "generation":
             if not self.started and not self.reload:
                 if DEBUG_MODE:
@@ -46,7 +46,7 @@ class WebSocketServer:
                 self.nes.startWorld(data)
                 if DEBUG_MODE:
                     print("done...")
-                await self.sendMessage(websocket, messageId, "ack", data = {})
+                await self.sendMessage(websocket, messageId, "generation", data =self.generation)
                 self.started = True
 
             if not self.started and self.reload:
@@ -56,26 +56,8 @@ class WebSocketServer:
                 #self.model = self.nes.loadModel()
                 if DEBUG_MODE:
                     print("done...")
-                await self.sendMessage(websocket, messageId, "ack", data = {})
+                await self.sendMessage(websocket, messageId, "ack", data = self.generation)
                 self.started = True
-
-            else:
-                if DEBUG_MODE:
-                    print("evole new generation...")
-                
-                if self.generation % 20 == 0:
-                    #self.nes.saveModel(self.model,self.generation)
-                    if DEBUG_MODE:
-                        print("models saved to file...")
-                if self.generation == 0:
-                    pass
-                else:
-                    self.nes.logging(self.generation)
-                    self.nes.updateModel()
-                self.generation = self.generation +1
-                if DEBUG_MODE:
-                    print("done...")
-                await self.sendMessage(websocket, messageId, "ack", None)
 
         elif messageType == "data":
             if self.started:
@@ -83,10 +65,17 @@ class WebSocketServer:
                     print("predicting...")
                 output_json = self.nes.runModel(data)
                 await self.sendMessage(websocket, messageId, "data", output_json)
-                if self.nes.printFrameCount() == 1.0:
+            
+                if self.nes.printFrameCount() == 1:
                     if DEBUG_MODE:
-                     print("new generation...")
-                    await self.sendMessage(websocket, messageId, "generation", self.generation+1)
+                        print("new generation...")
+                    print("logging")
+                    self.nes.logging(self.generation)
+                    self.nes.updateModel()
+                    self.generation = self.generation +1
+                    if DEBUG_MODE:
+                        print("done...")
+                    await self.sendMessage(websocket, messageId, "generation", self.generation)
             else:
                 await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
 
