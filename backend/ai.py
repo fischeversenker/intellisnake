@@ -26,11 +26,7 @@ class AI():
         self.IDs = {}
         self.FilePathLog = "./log/"
         self.frameCount = 0
-<<<<<<< HEAD
         self.FramesPerEpoch = 20
-=======
-        self.FramesPerEpoch = 30
->>>>>>> d2e68a76e28e79e935bd00831a280dc857d31ea4
 
     def startWorld(self,data):
         data = data.T
