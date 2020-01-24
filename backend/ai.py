@@ -19,14 +19,18 @@ class AI():
         self.W_try = None # list to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.01 # learning rate
+        self.alpha = 0.001 # learning rate
         self.shape = 64
         self.levels = 4
         self.model = []
         self.IDs = {}
         self.FilePathLog = "./log/"
         self.frameCount = 0
+<<<<<<< HEAD
+        self.FramesPerEpoch = 20
+=======
         self.FramesPerEpoch = 30
+>>>>>>> d2e68a76e28e79e935bd00831a280dc857d31ea4
 
     def startWorld(self,data):
         data = data.T
@@ -41,7 +45,7 @@ class AI():
         encoder = MaxPooling2D((2, 2))(encoder)
         x = Flatten()(encoder)
         x = Dense(units= 128, activation = 'selu')(x)
-        output = Dense(units = 2, activation='tanh')(x)
+        output = Dense(units = 2, activation='tanh')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
 
@@ -58,7 +62,9 @@ class AI():
         return inputArray_
 
     def preprocessInput(self,data_):
-        inputArray = np.array(data_["matrix"].values)
+        inputArray = np.array(data_["matrix"].values[0])
+        if len(np.unique(data_["matrix"].values[0])) > self.levels:
+            print("Input Data contains to many different values \n expected: {} got: {}".format(self.levels,len(np.unique(data_["matrix"].values[0]))))
         inputArray = inputArray/self.levels #scale to range [0,1]
         inputArray = self.reshaping(inputArray)
         return inputArray
@@ -69,8 +75,7 @@ class AI():
     def getReward(self):
         R = self.epoch["energyIntake"].tolist()
         if sum(R) == 0:
-            print("no energyIntake")
-            R = self.npop * [np.random.rand()]
+            R= [np.random.rand() for r in R]
         A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
         return A
 
@@ -80,7 +85,7 @@ class AI():
         for i in range(self.npop):
             n = [None] * len(w)
             for j in range(len(w)):
-                n[j] = np.random.randint(1,5,w[j].size) #adjust weights layer-wise
+                n[j] = np.random.rand(w[j].size) #adjust weights layer-wise
             self.N[i] = n
 
     def mutateWeights(self, n):
@@ -126,14 +131,17 @@ class AI():
              self.createNoiseMatrix()
         if self.W_try == None:
              self.applyNoise()
-
         outputDict = {}
         data["id_internal"] = data["id"].astype(int).map(self.IDs)
-
         for id, id_ in zip(data["id_internal"], data["id"]):
-          data_  = self.getSingleInput(data,id)
+          data_  = self.getSingleInput(data,id_)
           inputArray = self.preprocessInput(data_)
-          pred_ = self.makePrediction(id,inputArray)
+          try:
+             pred_ = self.makePrediction(id,inputArray)
+          except:
+               pred_ = [0,0]
+          print(pred_)
+        
           outputDict.update([(id_,pred_)],)
 
         self.frameCount = self.frameCount + 1
