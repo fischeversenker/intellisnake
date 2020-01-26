@@ -117,7 +117,9 @@ export class World {
       }
 
       food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id || potentialFood.id === foodBody.parent.id) as Food;
-      snake = this.snakes.find(snake => snake.id === snakeBody.id) as Snake;
+      snake = this.snakes.find(snake => {
+        return snake.containsBody(snakeBody);
+      }) as Snake;
 
       if (snake && food) {
         snake.eat(food);

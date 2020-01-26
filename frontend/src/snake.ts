@@ -31,6 +31,10 @@ export class Snake implements GameObject {
     Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
   }
 
+  containsBody(body: Body) {
+    return this.body.id === body.id || this.head.id === body.id;
+  }
+
   setPosition(position: Vector) {
     Body.setPosition(this.head, position)
   }
