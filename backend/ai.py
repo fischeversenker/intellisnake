@@ -20,21 +20,16 @@ class AI():
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
         self.sigma = 0.1 # noise standard deviation
         self.alpha = 0.001 # learning rate
-        self.shape = 64
-        self.levels = 4
+        self.shape = 100
         self.model = []
         self.IDs = {}
         self.FilePathLog = "./log/"
         self.frameCount = 0
         self.FramesPerEpoch = 20
-
-    def startWorld(self,data):
-        data = data.T
-        self.getIDs(data)
-        self.buildModel()
+        self.masks = None
 
     def buildModel(self):
-        input_ = Input(shape=(self.shape,self.shape,1))
+        input_ = Input(shape=(self.shape,self.shape,3))
         encoder = Conv2D(16, kernel_size=(8, 8),strides = (4,4), padding='same',activation ='selu')(input_)
         encoder = MaxPooling2D((2, 2))(encoder)
         encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='selu')(encoder)
@@ -45,45 +40,49 @@ class AI():
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
 
-    def getSingleInput(self,data,id):
-        return data[data["id"] == id]
-
     def reshaping(self, inputArray):
         shape = int(np.sqrt(len(inputArray))) #get len and width of 2dmatrix
-        inputArray_ = np.reshape(inputArray,(shape, shape)) #reshape 1d to 2d
-        inputArray_ = Image.fromarray(inputArray_, 'L') #convert from np to PIL image
-        inputArray_ = inputArray_.resize((self.shape,self.shape)) #down size image
-        inputArray_ = np.array(inputArray_) #convert PIL image to numpy
+        inputArray = np.array(inputArray).reshape(-1, 3)
+        inputArray = np.array(inputArray).reshape(shape, shape, 3)
+        return inputArray
+
+    def createMask(self,inputArray,list_):
+        self.masks = {}
+        for element in list_:
+            mymask = inputArray ==[ self.IDs[element]]
+            self.masks([(element,mymask)],)
+
+    def applyMask(self,inputArray,mask):
+        inputArray = np.place(inputArray, mask, [1,1,1]) #set values where mask is true to 1
         inputArray_ = np.reshape(inputArray_,(-1 , self.shape, self.shape,1)) #reshape to keras input
         return inputArray_
 
-    def preprocessInput(self,data_):
-        inputArray = np.array(data_["matrix"].values[0])
-        if len(np.unique(data_["matrix"].values[0])) > self.levels:
-           pass
-           # print("Input Data contains to many different values \n expected: {} got: {}".format(self.levels,len(np.unique(data_["matrix"].values[0]))))
-        inputArray = inputArray/self.levels #scale to range [0,1]
-        inputArray = self.reshaping(inputArray)
+    def preprocessInput(self,matrix,list_):
+        inputArray = self.reshaping(matrix)
+        self.createMask(inputArray,list_)
+        inputArray= (input/255.0)*0.9 #assure distance to currently controlled snake
         return inputArray
 
     def getModelWeights(self):
         return np.array(self.model.get_weights())
 
-    def getReward(self):
-        R = self.epoch["energyIntake"].tolist()
+    def getReward(self,dict_):
+        R = dict_.values()
+        keys = dict_.keys()
         if sum(R) == 0:
             R= [np.random.rand() for r in R]
         A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
+        A = dict(zip(keys,A))
         return A
 
     def createNoiseMatrix(self):
         w = self.getModelWeights()
-        self.N = [None] * self.npop
-        for i in range(self.npop):
+        self.N = {}
+        for element in self.population:
             n = [None] * len(w)
             for j in range(len(w)):
                 n[j] = np.random.rand(w[j].size) #adjust weights layer-wise
-            self.N[i] = n
+            self.N.update([(element,n)],)
 
     def mutateWeights(self, n):
         w = self.getModelWeights()
@@ -92,90 +91,66 @@ class AI():
         return w
 
     def applyNoise(self):
-        self.W_try = []
+        self.W_try = {}
         w = self.getModelWeights()
-        for i in range(self.npop):
-            w_try = self.mutateWeights(self.N[i])
-            self.W_try.append(w_try)
+        for element in self.population:
+            w_try = self.mutateWeights(self.N[element])
+            self.W_try.update([(element,w_try)],)
 
-    def updateModel(self):
-        w = self.getModelWeights()
-        A = self.getReward()
-        for i in range(len(w)):
-            n_ = np.dot( np.array(self.N)[:,i].T,A) #sum up all the rows of noise matrix for each layer and each row is weighted by A
-            n_ = np.reshape(n_,w[i].shape)
-            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_
-        self.model.set_weights(w)
-        self.npop = None
-        self.W_try = None
-        self.N = None
-        self.epoch = pd.DataFrame()
-
-    def makePrediction(self,i,inputArray):
-        self.model.set_weights(self.W_try[int(i)])
-        pred = self.model.predict(inputArray)
+    def makePrediction(self,input,element):
+        self.model.set_weights(self.W_try[element])
+        pred = self.model.predict(input)
         pred_ = [float(pred[0][0]),float(pred[0][1])]
         if pred_[0] == None:
             print("Nan pred!")
         return pred_
+    
+    def printFrameCount(self):
+        return self.frameCount/self.FramesPerEpoch
 
-    def runModel(self,data):
-        self.storeEpoch(data)
-        if self.npop == None:
-            self.npop = len(data)
+    def startModel(self,dict_):
+        self.IDs = dict_
+        self.buildModel()
+
+    def runModel(self,matrix,dict_):
+        if self.population == None:
+            self.population = list(dict_,keys())
         if self.N == None:
              self.createNoiseMatrix()
         if self.W_try == None:
              self.applyNoise()
-        outputDict = {}
-        data["id_internal"] = data["id"].astype(int).map(self.IDs)
-        for id, id_ in zip(data["id_internal"], data["id"]):
 
-          data_  = self.getSingleInput(data,id_)
-          inputArray = self.preprocessInput(data_)
-          try:
-             pred_ = self.makePrediction(id,inputArray)
-          except:
-               pred_ = [0,0]
-          #print(pred_)
-        
-          outputDict.update([(id_,pred_)],)
+        population = list(dict_,keys())
+        outputDict = {}
+        inputArray = self.preprocessInput(matrix,population)
+        for element in population:
+          input = self.applyMask(inputArray,self.masks[element])
+          pred_ = self.makePrediction(input,element)
+          outputDict.update([(element,pred_)],)
 
         self.frameCount = self.frameCount + 1
         frameProgress = self.frameCount/self.FramesPerEpoch
-
         return {
-            "prediction": outputDict,
-            "progress": [frameProgress]
-        }
+                "prediction": outputDict,
+                "progress": [frameProgress]
+               }
 
-    def storeEpoch(self,data):
-        if self.epoch.empty:
-            self.epoch = data
-        else:
-            data["id_internal"] = data["id"].astype(int).map(self.IDs)
-            for id,id_ in zip(data["id_internal"],data["id"]):
-                df = self.epoch[self.epoch["id_internal"]==id]
-                df_ = data[data["id_internal"]==id]
-                sum_ = df["energyIntake"] + df_["energyIntake"]
-                self.epoch.loc[self.epoch.id == id_, 'energyIntake'] = sum_
+     def updateModel(self,dict_):
+        w = self.getModelWeights()
 
-    def logging(self,generation):
-        self.frameCount = 0
-        log =[generation,sum(self.epoch["energyIntake"])]
-        print("Generation: {}, Overall EnergyIntake: {}".format(log[0],log[1]))
-        try:
-            with open('{}log.csv'.format(self.FilePathLog), 'a') as f:
-                writer = csv.writer(f)
-                writer.writerow(log)
-        except IOError:
-            with open('{}log.csv'.format(self.FilePathLog), 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow(log)
-        f.close()
+        A_dict = self.getReward(dict_)
+        A_dict_ = {i:A_dict[i] for i in self.N.keys()} #assure dicts have same order
+        A = list(A_dict_.values())
+        N = list(self.N.values())
 
-    def getIDs(self,data):
-        self.IDs = dict(zip(data["snakeIds"].astype(int),data.index.astype(int)))
+        for i in range(len(w)):
+            n_ = np.dot( np.array(N)[:,i].T,A) #sum up all the rows of noise matrix for each layer and each row is weighted by A
+            n_ = np.reshape(n_,w[i].shape)
+            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_
 
-    def printFrameCount(self):
-        return self.frameCount/self.FramesPerEpoch
+        self.model.set_weights(w)
+        self.population = None
+        self.W_try = None
+        self.N = None
+
+    

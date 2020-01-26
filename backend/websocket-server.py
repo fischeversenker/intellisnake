@@ -16,7 +16,6 @@ class WebSocketServer:
     def __init__(self):
         self.nes = AI()
         self.started = False
-        self.reload = False
         self.generation = 0
         self.model = []
         self.previousMessageData = None
@@ -25,55 +24,54 @@ class WebSocketServer:
         print("server running...")
         return websockets.serve(self.communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
         
-    def processMessageData(self, messageData):
-        return pd.DataFrame.from_dict(messageData).T
+    def processMessageTypeData(self, messageData):
+        return messageData["matrix"],messageData["snakeIds"]
+
+    def processMessageTypeStart(self,messageData):
+        return {item['id']:item['color'] for item in messageData})
+
+    def processMessageTypeGeneration(self,messageData):
+        return {item['id']:item['energyIntake'] for item in messageData})
 
     async def communication(self, websocket, path):
         async for data in websocket:
-            message = json.loads(data)
+            message = json.loads(data)git 
             await self.processMessage(websocket, message["messageId"], message["type"], message["data"])
 
     async def processMessage(self, websocket, messageId, messageType, messageData = {}):
 
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
-        data = self.processMessageData(messageData)
       
-        if messageType == "generation":
-            if not self.started and not self.reload:
+        if messageType == "start":
+            data = self.processMessageTypeStart(messageData)
+            if not self.started:
                 if DEBUG_MODE:
                     print("starting...")
-                self.nes.startWorld(data)
+                self.nes.startModel(data)
                 if DEBUG_MODE:
                     print("done...")
-                await self.sendMessage(websocket, messageId, "generation", data =self.generation)
+                await self.sendMessage(websocket, messageId, "start", data =self.generation)
                 self.started = True
 
-            if not self.started and self.reload:
-                print("loadModel is not here yet...")
-                if DEBUG_MODE:
-                    print("reloading...")
-                #self.model = self.nes.loadModel()
-                if DEBUG_MODE:
-                    print("done...")
-                await self.sendMessage(websocket, messageId, "ack", data = self.generation)
-                self.started = True
+        elif messageType == "generation":
+            data = self.processMessageTypeGeneration(messageData)
+            if DEBUG_MODE:
+                print("new generation...")
+            self.nes.updateModel()
+            self.generation = self.generation +1
+            if DEBUG_MODE:
+               print("done...")
+            await self.sendMessage(websocket, messageId, "start", self.generation)
 
         elif messageType == "data":
+            matrix,snakeIds = self.processMessageTypeData(messageData)
             if self.started:
                 if DEBUG_MODE:
                     print("predicting...")
-                output_json = self.nes.runModel(data)
+                output_json = self.nes.runModel(matrix,snakeIds)
                 await self.sendMessage(websocket, messageId, "data", output_json)
-            
-                if self.nes.printFrameCount() == 1:
-                    if DEBUG_MODE:
-                        print("new generation...")
-                    self.nes.logging(self.generation)
-                    self.nes.updateModel()
-                    self.generation = self.generation +1
-                    if DEBUG_MODE:
-                        print("done...")
+                if self.nes.printFrameCount() == 1 or len(snakeIds) == 0:
                     await self.sendMessage(websocket, messageId, "generation", self.generation)
             else:
                 await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
