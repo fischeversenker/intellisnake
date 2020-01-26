@@ -140,8 +140,14 @@ export class App implements MessageListener {
       .join('');
     this.debuggerElement.innerHTML = `
     <div class='generation-info'>
-      <b>Generation: ${this.generationCount}</b><br>
-      <b>Progress: ${this.generationProgress}</b><br>
+      <table>
+        <tr>
+          <th>Generation:</td><td>${this.generationCount}</td>
+        </tr>
+        <tr>
+          <th>Progress:</td><td><progress value="${this.generationProgress}" max="1"></progress></td>
+        </tr>
+      </table>
     </div>
     <div class='snakes'>
       <table>

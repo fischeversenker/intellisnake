@@ -77,12 +77,18 @@ export class World {
       this.gameObjects.push(food);
     }
 
-    this.snakes.forEach(snake => {
-      snake.update();
-      if (snake.dead) {
-        MWorld.remove(this.physics.engine.world, snake.body);
+    this.gameObjects.forEach(gameObject => {
+      if (gameObject instanceof Snake) {
+        gameObject.update();
+      }
+      if (gameObject.dead) {
+        MWorld.remove(this.physics.engine.world, gameObject.body);
       }
     });
+    this.gameObjects = [
+      ...this.snakes,
+      ...this.nonSnakes.filter(food => !food.dead),
+    ];
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
@@ -97,7 +103,7 @@ export class World {
 
   handleCollissions = (event: IEventCollision<Engine>) => {
     const foodPairs = event.pairs.filter(pair => {
-      if (pair.bodyA.label === 'snake-tail' || pair.bodyB.label === 'snake-tail') {
+      if (pair.bodyA.label === String(GameObjectType.SNAKE_TAIL) || pair.bodyB.label === String(GameObjectType.SNAKE_TAIL)) {
         return false;
       }
       const aIsSnakeBIsFood = pair.bodyA.label === String(GameObjectType.SNAKE) && pair.bodyB.label === String(GameObjectType.FOOD);
@@ -117,13 +123,10 @@ export class World {
       }
 
       food = this.nonSnakes.find(potentialFood => potentialFood.id === foodBody.id || potentialFood.id === foodBody.parent.id) as Food;
-      snake = this.snakes.find(snake => {
-        return snake.containsBody(snakeBody);
-      }) as Snake;
+      snake = this.snakes.find(snake => snake.containsBody(snakeBody)) as Snake;
 
       if (snake && food) {
         snake.eat(food);
-        food.body.parts.forEach((part: Body) => MWorld.remove(this.physics.engine.world, part));
       }
       MWorld.remove(this.physics.engine.world, foodBody);
     });

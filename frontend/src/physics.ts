@@ -117,9 +117,9 @@ export class Physics {
   createSnakeBody(x: number, y: number, length: number): Composite {
     const snakeOptions: IBodyDefinition = {
       friction: 0.1,
-      frictionAir: 0.05,
+      frictionAir: 0.1,
       density: 1,
-      mass: 1,
+      mass: 0.5,
       label: String(GameObjectType.SNAKE),
       collisionFilter: {
         group: Body.nextGroup(true),
@@ -132,12 +132,14 @@ export class Physics {
     for (let i = 1; i <= length; i++) {
       const tailPiece = Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
         ...snakeOptions,
-        label: 'snake-tail',
+        label: String(GameObjectType.SNAKE_TAIL),
+        mass: 0.1,
+        frictionAir: 0.4,
       });
       const constraint = Constraint.create({
         bodyA: (i === 1) ? head : tail[i - 2],
         bodyB: tailPiece,
-        stiffness: 0.1,
+        stiffness: 0.99,
         damping: 0.1,
         length: 1.4 * SNAKE_HEAD_SIZE,
         render: {
@@ -150,7 +152,6 @@ export class Physics {
       constraints.push(constraint);
     }
     const snakeComposite = Composite.create({
-      label: String(GameObjectType.SNAKE),
       bodies: [head, ...tail],
       constraints: constraints,
     });
