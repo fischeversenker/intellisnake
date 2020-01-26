@@ -28,10 +28,17 @@ class WebSocketServer:
         return messageData["matrix"],messageData["snakeIds"]
 
     def processMessageTypeStart(self,messageData):
+<<<<<<< HEAD
         return {item['id']:item['color'] for item in messageData["snakes"]}
 
     def processMessageTypeGeneration(self,messageData):
         return {item['id']:item['energyIntake'] for item in messageData["snakes"]}
+=======
+        return {item['id']:item['color'] for item in messageData}
+
+    def processMessageTypeGeneration(self,messageData):
+        return {item['id']:item['energyIntake'] for item in messageData}
+>>>>>>> f28818d5259d4c1f75653703ccb1a491c8786799
 
     async def communication(self, websocket, path):
         async for data in websocket:
