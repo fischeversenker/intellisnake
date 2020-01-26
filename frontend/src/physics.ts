@@ -11,6 +11,7 @@ const ME_COLOR = 'white';
 const SNAKE_HEAD_SIZE = 8;
 const SNAKE_TAIL_SIZE = 6;
 const FOOD_SIZE = 24;
+const FOOD_COLOR = 'rgb(234, 123, 198)';
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -168,27 +169,16 @@ export class Physics {
   }
 
   createFood(x: number, y: number = 500): Body {
-    const halo = Bodies.circle(x, y, FOOD_SIZE, {
+    return Bodies.circle(x, y, FOOD_SIZE, {
       label: String(GameObjectType.FOOD),
       friction: 0,
-      frictionAir: 0.4,
-      render: {
-        fillStyle: 'white',
-        opacity: 0.1,
-      },
-    });
-    const foodBody = Bodies.rectangle(x, y, FOOD_SIZE / 1.5, FOOD_SIZE / 1.5, {
-      label: String(GameObjectType.FOOD),
-      friction: 0,
-      frictionAir: 0.4,
-    });
-    const food = Body.create({
-      label: String(GameObjectType.FOOD),
-      parts: [foodBody, halo],
       frictionAir: 0.4,
       inertia: 0,
+      render: {
+        fillStyle: FOOD_COLOR,
+        opacity: 1,
+      },
     });
-    return food;
   }
 
   run() {
@@ -218,18 +208,9 @@ export class Physics {
     this.matterCommon._nextId = STARTING_BODY_ID;
   }
 
-  renderAsMe(...bodies: Body[]): ImageData {
-    let origColor: string | undefined;
-    // set ME_COLOR for all body parts
-    bodies.forEach(body => {
-      origColor = body.render.fillStyle;
-      body.render.fillStyle = ME_COLOR;
-    });
+  getImageData(): ImageData {
 
-    // render world with temp renderer to not disturb
-    // the shown (correctly colored) main rendering
-    let meData;
-    Render.world(this.tempRender);
+    let imgData: ImageData;
     if (this.render && this.render.canvas) {
       const context = this.render.canvas.getContext('2d');
       if (context) {
@@ -237,19 +218,10 @@ export class Physics {
         if (tempRenderContext) {
           tempRenderContext.clearRect(0, 0, this.width, this.height);
           tempRenderContext.drawImage(context.canvas, 0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
-          meData = tempRenderContext.getImageData(0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
+          imgData = tempRenderContext.getImageData(0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
         }
       }
     }
-
-    // reset orig colors
-    bodies.forEach(body => {
-      body.render.fillStyle = origColor;
-    });
-
-    if (!meData) {
-      throw new Error('could not get image data for bodies');
-    }
-    return meData as ImageData;
+    return imgData!;
   }
 }

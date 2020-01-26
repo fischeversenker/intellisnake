@@ -92,7 +92,10 @@ export class World implements MessageListener {
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
-      this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
+      this.sendWebSocketMessage(MessageType.DATA, {
+        matrix: this.toBitMatrix(),
+        snakeIds: this.snakeIds,
+      });
     }
 
     this.tickCount++;
@@ -180,28 +183,14 @@ export class World implements MessageListener {
     this.pendingWebSocketRequests.push(this.websocket.send({ type, data }));
   }
 
-  private currentSnakesData(): any {
-    return this.aliveSnakes.reduce((acc, snake) => ({
-      ...acc,
-      [snake.id]: {
-        id: snake.id,
-        energyLevel: snake.energyLevel,
-        energyIntake: snake.energyIntake,
-        matrix: this.toBitMatrix(snake),
-      },
-    }), {});
-  }
-
-  // returns matrix (as 1d array) where each pixel is repsesented as
-  // the sum of this pixel's r, g and b value
-  private toBitMatrix(snake: Snake): number[] {
-    const result: number[] = [];
-    let imageData = this.physics.renderAsMe(snake.body, ...(snake as Snake).tail);
+  private toBitMatrix(): number[][] {
+    const result: number[][] = [];
+    let imageData = this.physics.getImageData();
     for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
       const r = imageData.data[i];
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
-      result.push(r + g + b);
+      result.push([r, g, b]);
     }
     return result;
   }

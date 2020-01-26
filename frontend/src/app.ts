@@ -9,12 +9,13 @@ export class App implements MessageListener {
   private debuggerElement: HTMLElement;
   private resetButton: HTMLElement;
   private websocket: Websocket;
-  private world: World | null = null;
+  private world: World;
   private generationCount = 0;
   private lastMessage = 0;
   private lastAckData: any;
   private physics: Physics;
   private generationProgress = 0;
+  private isInitialGeneration = true;
 
   constructor(
     private rootElement: HTMLElement,
@@ -36,16 +37,10 @@ export class App implements MessageListener {
     const mainElement = document.querySelector('#main') as HTMLElement;
     this.physics = new Physics(mainElement, this.width, this.height);
 
-    this.websocket = Websocket.getInstance(evt => this.onWebsocketOpen(evt), evt => this.onWebsocketClose(evt));
+    this.websocket = Websocket.getInstance(() => this.init(), evt => this.onWebsocketClose(evt));
     this.websocket.registerListener(this);
-  }
 
-  onWebsocketOpen(evt: any): void {
-    const snakeIds: string[] = [];
-    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
-      snakeIds.push(String(STARTING_BODY_ID + i * 21));
-    }
-    this.websocket.send({ type: MessageType.GENERATION, data: { snakeIds } });
+    this.world = new World(this.generationCount, this.physics, this.width, this.height);
   }
 
   onWebsocketClose(evt: any): void {
@@ -59,9 +54,9 @@ export class App implements MessageListener {
   onMessage(message: Message) {
     this.lastMessage = Date.now();
     if (message.type === MessageType.GENERATION) {
-      this.generationCount = message.data.generation as number;
       console.log('[MAIN]: starting new generation: #', this.generationCount);
-      this.startNewGeneration();
+      this.generationCount = message.data.generation as number;
+      this.newGeneration();
     } else {
       if (message.data && message.data.progress) {
         this.generationProgress = message.data.progress;
@@ -72,12 +67,25 @@ export class App implements MessageListener {
     }
   }
 
-  startNewGeneration() {
-    if (this.world) {
-      this.world.destroy();
+  init() {
+    const snakes = this.world.aliveSnakes.map(snake => ({
+      id: snake.id,
+      color: snake.getColor(),
+    }));
+    this.websocket.send({ type: MessageType.GENERATION, data: { snakes } });
+  }
+
+  newGeneration() {
+    if (!this.isInitialGeneration) {
+      if (this.world) {
+        this.world.destroy();
+      }
+
+      this.world = new World(this.generationCount, this.physics, this.width, this.height);
+    } else {
+      this.isInitialGeneration = false;
     }
 
-    this.world = new World(this.generationCount, this.physics, this.width, this.height);
     this.world.begin();
   }
 }

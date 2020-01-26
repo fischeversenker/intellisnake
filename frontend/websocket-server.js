@@ -19,7 +19,7 @@ wss.on('connection', function connection(ws) {
       setTimeout(() => {
         ws.send(JSON.stringify({ messageId: data.messageId, type: MESSAGE_TYPES.GENERATION, data: { generation: ++genCount} }));
       }, 500);
-    } else if (frameCount >= GEN_COUNT || Object.keys(data.data).length === 0) {
+    } else if (frameCount >= GEN_COUNT || (data.data.snakeIds && data.data.snakeIds.length === 0)) {
       frameCount = 0;
       ws.send(JSON.stringify({
         messageId: -1,
@@ -27,7 +27,7 @@ wss.on('connection', function connection(ws) {
         data: { generation: genCount++ },
       }));
     } else {
-      const ids = Object.keys(data.data);
+      const ids = data.data.snakeIds;
       const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] })).reduce((acc, pos) => ({...acc, ...pos}), {});
       // use this for circular movement of all snakes
       // const x = Math.cos(Date.now() / 800);

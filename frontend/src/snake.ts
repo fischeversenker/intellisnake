@@ -59,6 +59,13 @@ export class Snake implements GameObject {
     }
   }
 
+  getColor(): number[] {
+    const colorRegex = /(?<r>\d{1,3}), (?<g>\d{1,3}), (?<b>\d{1,3})/;
+    const colors = ((this.body.render.fillStyle || '').match(colorRegex) || [])['groups'] as any;
+    const color = [Number(colors['r']), Number(colors['g']), Number(colors['b'])];
+    return color;
+  }
+
   private get velocityMagnitude(): number {
     return Vector.magnitude(this.body.velocity);
   }
