@@ -3,7 +3,7 @@ import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
 export const SNAKE_LENGTH = 50;
-export const SNAKE_ENERGY_LEVEL_INITIAL = 500;
+export const SNAKE_ENERGY_LEVEL_INITIAL = 1000;
 
 export class Snake implements GameObject {
 

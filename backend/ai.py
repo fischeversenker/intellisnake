@@ -14,12 +14,11 @@ from keras.models import Model
 class AI():
     def __init__(self):
         # hyperparameters
-        self.npop = None # population size
-        self.N = None # list to store n noiseMatrix
-        self.W_try = None # list to store weights
+        self.N = None # dict to store n noiseMatrix
+        self.W_try = None # dict to store weights
         self.epoch = pd.DataFrame() # dataframe to store rewards per epoch
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.001 # learning rate
+        self.alpha = 0.000001 # learning rate
         self.shape = 100
         self.model = []
         self.IDs = {}
@@ -31,12 +30,15 @@ class AI():
 
     def buildModel(self):
         input_ = Input(shape=(self.shape,self.shape,3))
-        encoder = Conv2D(16, kernel_size=(8, 8),strides = (4,4), padding='same',activation ='selu')(input_)
+        encoder = Conv2D(16, kernel_size=(8, 8),strides = (4,4), padding='same',activation ='relu')(input_)
         encoder = MaxPooling2D((2, 2))(encoder)
-        encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='selu')(encoder)
+        encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='relu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
+       
         x = Flatten()(encoder)
-        x = Dense(units= 128, activation = 'selu')(x)
+        x = Dense(units= 64, activation = 'tanh')(x)
+        x = Dense(units= 1, activation = 'tanh')(x)
+
         output = Dense(units = 2, activation='tanh')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
@@ -68,8 +70,8 @@ class AI():
         return np.array(self.model.get_weights())
 
     def getReward(self,dict_):
-        R = dict_.values()
-        keys = dict_.keys()
+        R = list(dict_.values())
+        keys = list(dict_.keys())
         print("total energyIntake: {}".format(sum(R)))
         if sum(R) == 0:
             R= [np.random.rand() for r in R]
@@ -116,6 +118,7 @@ class AI():
 
     def runModel(self,matrix,list_):
         if self.population == None:
+            print("got {} snakes...".format(len(list_)))
             self.population = list_
         if self.N == None:
              self.createNoiseMatrix()
@@ -124,10 +127,13 @@ class AI():
 
         population = list_
         outputDict = {}
+        
         inputArray = self.preprocessInput(matrix,population)
+        
         for element in population:
           input = self.applyMask(inputArray,self.masks[element])
           pred_ = self.makePrediction(input,element)
+    
           outputDict.update([(element,pred_)],)
 
         self.frameCount = self.frameCount + 1
@@ -139,12 +145,13 @@ class AI():
 
     def updateModel(self,dict_):
         w = self.getModelWeights()
-
+      
         A_dict = self.getReward(dict_)
         A_dict_ = {i:A_dict[i] for i in self.N.keys()} #assure dicts have same order
+     
         A = list(A_dict_.values())
         N = list(self.N.values())
- 
+
         for i in range(len(w)):
             n_ = np.dot( np.array(N)[:,i].T,A) #sum up all the rows of noise matrix for each layer and each row is weighted by A
             n_ = np.reshape(n_,w[i].shape)
