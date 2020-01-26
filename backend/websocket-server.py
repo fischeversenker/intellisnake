@@ -28,7 +28,7 @@ class WebSocketServer:
         return messageData["matrix"],messageData["snakeIds"]
 
     def processMessageTypeStart(self,messageData):
-        return {item['id']:item['color'] for item in messageData})
+        return {item['id']:item['color'] for item in messageData}
 
     def processMessageTypeGeneration(self,messageData):
         return {item['id']:item['energyIntake'] for item in messageData})
