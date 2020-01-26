@@ -4,7 +4,8 @@ export enum GameObjectType {
   'NONE' = 0,
   'FOOD' = 1,
   'SNAKE' = 2,
-  'ME' = 3,
+  'SNAKE_TAIL' = 3,
+  'ME' = 4,
 };
 
 export interface GameObject {
