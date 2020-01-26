@@ -52,6 +52,7 @@ export class App implements MessageListener {
 
   onMessage(message: Message) {
     this.lastMessage = Date.now();
+    this.drawDebugInfo();
     switch (message.type) {
       case MessageType.START:
         console.log('[MAIN]: starting world');
@@ -60,7 +61,7 @@ export class App implements MessageListener {
       case MessageType.GENERATION:
         console.log(`[MAIN]: ending generation #${this.generationCount}`);
         this.generationCount = message.data.generation as number;
-        this.websocket.send({ type: MessageType.GENERATION, data: this.world.getGenerationData() });
+        this.websocket.send({ type: MessageType.GENERATION, data: { snakes: this.world.getGenerationData() } });
         break;
       case MessageType.ERROR:
         console.log(`[MAIN]: <<< received error: "${message.data}"`);
@@ -130,5 +131,26 @@ export class App implements MessageListener {
   start() {
     this.reset();
     this.world.begin();
+  }
+
+  private drawDebugInfo() {
+    const snakeRows = this.world.aliveSnakes
+      .sort((a, b) => b.energyLevel - a.energyLevel)
+      .map(snake => `<tr><td>${snake.id}</td><td>${Math.floor(snake.energyIntake)}</td><td>${Math.floor(snake.energyLevel)}</td></tr>`)
+      .join('');
+    this.debuggerElement.innerHTML = `
+    <div class='generation-info'>
+      <b>Generation: ${this.generationCount}</b><br>
+      <b>Progress: ${this.generationProgress}</b><br>
+    </div>
+    <div class='snakes'>
+      <table>
+        <tr>
+          <th>ID</th><th>EI</th><th>EL</th>
+        </tr>
+        ${snakeRows}
+      </table>
+    </div>
+    `;
   }
 }

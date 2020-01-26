@@ -19,7 +19,7 @@ wss.on('connection', function connection(ws) {
 
     if (data.type === MESSAGE_TYPES.START) {
       setTimeout(() => {
-        ws.send(JSON.stringify({ messageId: data.messageId, type: MESSAGE_TYPES.START, data: { generation: genCount } }));
+        ws.send(JSON.stringify({ messageId: data.messageId, type: MESSAGE_TYPES.START, data: { generation: genCount++ } }));
       }, (50));
     } else if (data.type === MESSAGE_TYPES.GENERATION) {
       setTimeout(() => {
