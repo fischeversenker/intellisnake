@@ -25,8 +25,8 @@ export class Websocket {
   private listeners: MessageListener[] = [];
 
   constructor(
-    onOpen: (evt: any) => void,
-    onClose: (evt: any) => void,
+    onOpen: (evt: any) => void = () => {},
+    onClose: (evt: any) => void = () => {},
   ) {
     this.nativeWebsocket = new WebSocket('ws://localhost:8765') as WebSocket;
     this.nativeWebsocket.onopen = onOpen;
@@ -38,7 +38,7 @@ export class Websocket {
     onOpen?: (evt: any) => void,
     onClose?: (evt: any) => void,
   ): Websocket {
-    if (!Websocket.instance && onOpen && onClose) {
+    if (!Websocket.instance) {
       Websocket.instance = new Websocket(onOpen, onClose);
     }
     return Websocket.instance;
