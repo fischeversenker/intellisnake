@@ -1,4 +1,4 @@
-import Matter, { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World } from 'matter-js';
+import Matter, { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World, Vector, Composite } from 'matter-js';
 import { GameObjectType } from './utils';
 
 export const STARTING_BODY_ID = 666;
@@ -108,35 +108,25 @@ export class Physics {
     this.matterCommon._nextId = STARTING_BODY_ID;
   }
 
-  addRandomSnake(): { head: Body, tail: Body[], constraints: Constraint[] } {
-    const randomX = BOUNDARY_WIDTH * 3 + Math.random() * (this.width - BOUNDARY_WIDTH * 6);
-    const randomY = BOUNDARY_WIDTH * 3 + Math.random() * (this.height - BOUNDARY_WIDTH * 6);
-    const snake = this.createSnakeBody(randomX, randomY, 10);
-    World.add(this.engine.world, [snake.head, ...snake.tail]);
-    World.add(this.engine.world, snake.constraints);
+  getRandomSnake(): Composite {
+    const randomPos = this.getRandomPosition();
+    const snake = this.createSnakeBody(randomPos.x, randomPos.y, 10);
     return snake;
   }
 
-  createSnakeBody(x: number, y: number, length: number): { head: Body, tail: Body[], constraints: Constraint[] } {
-    // get an existing snake color or add a random one
-    let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
-    if (snakeColors.has(this.snakesOnWorld.length)) {
-      snakeColor = snakeColors.get(this.snakesOnWorld.length) as string;
-    } else {
-      snakeColors.set(this.snakesOnWorld.length, snakeColor);
-    }
-
+  createSnakeBody(x: number, y: number, length: number): Composite {
     const snakeOptions: IBodyDefinition = {
       friction: 0,
       frictionAir: 0.05,
       density: 1,
       mass: 1,
       label: String(GameObjectType.SNAKE),
-      render: {
-        fillStyle: snakeColor,
+      collisionFilter: {
+        group: Body.nextGroup(true),
       },
     }
     const head = Bodies.circle(x, y, SNAKE_HEAD_SIZE, { ...snakeOptions });
+
     const tail = [];
     const constraints = [];
     for (let i = 1; i <= length; i++) {
@@ -150,6 +140,8 @@ export class Physics {
       const constraint = Constraint.create({
         bodyA: isFirst ? head : tail[i - 2],
         bodyB: tailPiece,
+        stiffness: 0.1,
+        damping: 0.1,
         render: {
           visible: false,
           lineWidth: 0,
@@ -159,12 +151,34 @@ export class Physics {
       tail.push(tailPiece);
       constraints.push(constraint);
     }
-    return { head, tail, constraints };
+    const snakeComposite = Composite.create({
+      label: String(GameObjectType.SNAKE),
+      bodies: [head, ...tail],
+      constraints: constraints,
+    });
+
+    // get an existing snake color or add a random one
+    let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
+    if (snakeColors.has(snakeComposite.id)) {
+      snakeColor = snakeColors.get(snakeComposite.id) as string;
+    } else {
+      snakeColors.set(snakeComposite.id, snakeColor);
+    }
+
+    head.render.fillStyle = snakeColor;
+    tail.forEach(tailPiece => tailPiece.render.fillStyle = snakeColor);
+
+    return snakeComposite;
   }
 
-  addFood(x: number, y: number): Body {
+  getRandomPosition(): Vector {
+    const randomX = BOUNDARY_WIDTH * 3 + Math.random() * (this.width - BOUNDARY_WIDTH * 6);
+    const randomY = BOUNDARY_WIDTH * 3 + Math.random() * (this.height - BOUNDARY_WIDTH * 6);
+    return Vector.create(randomX, randomY);
+  }
+
+  getFood(x: number, y: number): Body {
     const food = this.createFood(x, y);
-    World.add(this.engine.world, food);
     return food;
   }
 

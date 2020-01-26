@@ -1,42 +1,45 @@
-import { Body, Constraint, Vector } from "matter-js";
+import { Body, Constraint, Vector, Composite } from "matter-js";
 import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
 export const SNAKE_LENGTH = 50;
+export const SNAKE_ENERGY_LEVEL_INITIAL = 500;
 
 export class Snake implements GameObject {
 
   type = GameObjectType.SNAKE;
 
-  energyLevel = 1000;
+  energyLevel = SNAKE_ENERGY_LEVEL_INITIAL;
   energyIntake = 0;
   dead: boolean = false;
-  createdAt: number;
-  diedAt: number = 0;
+  id: number;
+  body: Composite;
+  head: Body;
 
   constructor(
-    public id: number,
-    public body: Body,
-    public tail: Body[],
-    public constraints: Constraint[],
+    composite: Composite,
   ) {
-    this.createdAt = Date.now();
+    this.id = composite.id,
+    this.body = composite;
+    this.head = composite.bodies[0];
   }
 
-  updateVelocity(newVelocity: Vector): void {
+  setVelocity(newVelocity: Vector): void {
     // const force = Vector.mult(newVelocity, 0.02);
     // const oldPosition = Vector.add(this.body.position, Vector.rotate(newVelocity, 180));
     // Body.applyForce(this.body, oldPosition, force);
-    Body.setVelocity(this.body, Vector.mult(newVelocity, 6));
+    Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
   }
 
-  die() {
-    this.dead = true;
-    this.diedAt = Date.now();
-    this.body.render.visible = false;
+  setPosition(position: Vector) {
+    Body.setPosition(this.head, position)
   }
 
   update(): void {
+    if (this.energyLevel <= 0) {
+      this.dead = true;
+    }
+
     if (this.dead) {
       return;
     }
@@ -51,22 +54,20 @@ export class Snake implements GameObject {
     food.beEaten();
   }
 
-  getLifespan(): string {
-    if (this.dead) {
-      return String(Math.floor((this.diedAt - this.createdAt) / 1000));
-    } else {
-      return '...';
-    }
+  reset(): void {
+    this.energyIntake = 0;
+    this.energyLevel = SNAKE_ENERGY_LEVEL_INITIAL;
+    this.dead = false;
   }
 
   getColor(): number[] {
     const colorRegex = /(?<r>\d{1,3}), (?<g>\d{1,3}), (?<b>\d{1,3})/;
-    const colors = ((this.body.render.fillStyle || '').match(colorRegex) || [])['groups'] as any;
+    const colors = ((this.head.render.fillStyle || '').match(colorRegex) || [])['groups'] as any;
     const color = [Number(colors['r']), Number(colors['g']), Number(colors['b'])];
     return color;
   }
 
   private get velocityMagnitude(): number {
-    return Vector.magnitude(this.body.velocity);
+    return Vector.magnitude(this.head.velocity);
   }
 }

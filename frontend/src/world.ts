@@ -11,7 +11,7 @@ export const GENERATION_SNAKE_COUNT = 20;
 
 let worldCount = 0;
 
-export class World implements MessageListener {
+export class World {
 
   id = worldCount++;
   running = false;
@@ -22,7 +22,6 @@ export class World implements MessageListener {
   private tickCount = 0;
 
   constructor(
-    public generationCount: number = 0,
     private physics: Physics,
     private width: number,
     private height: number,
@@ -30,13 +29,6 @@ export class World implements MessageListener {
     console.log('[WORLD]: building new world...');
     Events.on(this.physics.engine, 'beforeUpdate', this.update);
     Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
-
-    // add snakes
-    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
-      const snakeBody = this.physics.addRandomSnake();
-      const snake = new Snake(snakeBody.head.id, snakeBody.head, snakeBody.tail, snakeBody.constraints);
-      this.gameObjects.push(snake);
-    }
 
     this.websocket = Websocket.getInstance();
     console.log('[WORLD]: ... ready');
@@ -50,6 +42,14 @@ export class World implements MessageListener {
   stop() {
     this.running = false;
     this.physics.stop();
+  }
+
+  reset() {
+    this.nonSnakes.forEach(nonSnake => {
+      MWorld.remove(this.physics.engine.world, nonSnake.body);
+    });
+    this.gameObjects = this.gameObjects.filter(gameObject => gameObject.type === GameObjectType.SNAKE);
+    this.pendingWebSocketRequests = [];
   }
 
   destroy() {
@@ -71,22 +71,16 @@ export class World implements MessageListener {
     if (Math.random() > 0.99) {
       const x = this.sampleNormalDistribution() * this.width;
       const y = this.sampleNormalDistribution() * this.height;
-      const foodBody = this.physics.addFood(x, y);
+      const foodBody = this.physics.getFood(x, y);
+      MWorld.add(this.physics.engine.world, foodBody);
       const food = new Food(foodBody.id, foodBody, 500);
       this.gameObjects.push(food);
     }
 
     this.snakes.forEach(snake => {
       snake.update();
-      if (!snake.dead && snake.energyLevel <= 0) {
+      if (snake.dead) {
         MWorld.remove(this.physics.engine.world, snake.body);
-        snake.tail.forEach(tailPiece => {
-          MWorld.remove(this.physics.engine.world, tailPiece);
-        });
-        snake.constraints.forEach(constraint => {
-          MWorld.remove(this.physics.engine.world, constraint);
-        });
-        snake.die();
       }
     });
 
@@ -149,30 +143,19 @@ export class World implements MessageListener {
     return this.aliveSnakes.map(snake => snake.id);
   }
 
-  onMessage(message: Message) {
-    switch (message.type) {
-      case MessageType.ERROR:
-        console.log(`[WORLD]: <<< received error: "${message.data}"`);
-        this.stop();
-        break;
-      case MessageType.DATA:
-        if (!message.data.prediction) {
-          break;
-        }
-        for (let destination in message.data.prediction) {
-          let snake = this.snakes.find(gO => Number(gO.id) === Number(destination));
-          if (snake && snake.updateVelocity) {
-            const x = message.data.prediction[snake.id][0];
-            const y = message.data.prediction[snake.id][1];
-            snake.updateVelocity(Vector.create(x, y));
-          }
-        }
-        break;
-      default:
-        console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
-    }
+  ackMessage(messageId: number) {
+    this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== messageId);
+  }
 
-    this.pendingWebSocketRequests = this.pendingWebSocketRequests.filter(reqId => reqId !== message.messageId);
+  addGameObject(gameObject: GameObject) {
+    this.gameObjects.push(gameObject);
+  }
+
+  getGenerationData(): any {
+    return this.snakes.map(snake => ({
+      id: snake.id,
+      energyIntake: snake.energyIntake,
+    }));
   }
 
   private sampleNormalDistribution(): number {

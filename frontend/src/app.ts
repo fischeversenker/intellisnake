@@ -1,4 +1,5 @@
-import { Physics, STARTING_BODY_ID } from './physics';
+import { Body, Vector, World as MWorld, Composite } from 'matter-js';
+import { Physics } from './physics';
 import { Snake } from './snake';
 import { Message, MessageListener, MessageType, Websocket } from './websocket';
 import { GENERATION_SNAKE_COUNT, World } from './world';
@@ -12,10 +13,8 @@ export class App implements MessageListener {
   private world: World;
   private generationCount = 0;
   private lastMessage = 0;
-  private lastAckData: any;
   private physics: Physics;
   private generationProgress = 0;
-  private isInitialGeneration = true;
 
   constructor(
     private rootElement: HTMLElement,
@@ -40,7 +39,7 @@ export class App implements MessageListener {
     this.websocket = Websocket.getInstance(() => this.init(), evt => this.onWebsocketClose(evt));
     this.websocket.registerListener(this);
 
-    this.world = new World(this.generationCount, this.physics, this.width, this.height);
+    this.world = new World(this.physics, this.width, this.height);
   }
 
   onWebsocketClose(evt: any): void {
@@ -53,39 +52,83 @@ export class App implements MessageListener {
 
   onMessage(message: Message) {
     this.lastMessage = Date.now();
-    if (message.type === MessageType.GENERATION) {
-      console.log('[MAIN]: starting new generation: #', this.generationCount);
-      this.generationCount = message.data.generation as number;
-      this.newGeneration();
-    } else {
-      if (message.data && message.data.progress) {
-        this.generationProgress = message.data.progress;
-      }
-      if (this.world) {
-        this.world.onMessage(message);
-      }
+    switch (message.type) {
+      case MessageType.START:
+        console.log('[MAIN]: starting world');
+        this.start();
+        break;
+      case MessageType.GENERATION:
+        console.log(`[MAIN]: ending generation #${this.generationCount}`);
+        this.generationCount = message.data.generation as number;
+        this.websocket.send({ type: MessageType.GENERATION, data: this.world.getGenerationData() });
+        break;
+      case MessageType.ERROR:
+        console.log(`[MAIN]: <<< received error: "${message.data}"`);
+        this.world.stop();
+        break;
+      case MessageType.DATA:
+        if (message.data && message.data.progress) {
+          this.generationProgress = message.data.progress;
+        }
+
+        // tell world that we received a message with a given id
+        this.world.ackMessage(Number(message.messageId));
+
+        if (!message.data.prediction) {
+          break;
+        }
+        for (let destination in message.data.prediction) {
+          let snake = this.world.snakes.find(gO => Number(gO.id) === Number(destination));
+          if (snake) {
+            const x = message.data.prediction[snake.id][0];
+            const y = message.data.prediction[snake.id][1];
+            snake.setVelocity(Vector.create(x, y));
+          }
+        }
+        break;
+      default:
+        console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
     }
   }
 
   init() {
-    const snakes = this.world.aliveSnakes.map(snake => ({
+    // add snakes
+    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
+      const snakeComposite = this.physics.getRandomSnake();
+      MWorld.add(this.physics.engine.world, snakeComposite);
+      const snake = new Snake(snakeComposite);
+      this.world.addGameObject(snake);
+    }
+
+    const snakesData = this.world.snakes.map(snake => ({
       id: snake.id,
       color: snake.getColor(),
     }));
-    this.websocket.send({ type: MessageType.GENERATION, data: { snakes } });
+
+    this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
   }
 
-  newGeneration() {
-    if (!this.isInitialGeneration) {
-      if (this.world) {
-        this.world.destroy();
+  reset() {
+    console.log('[MAIN]: resetting world');
+    this.world.stop();
+    this.world.snakes.forEach(snake => {
+      snake.reset();
+
+      const randPos = this.physics.getRandomPosition();
+      snake.body.bodies.forEach(body => {
+        Body.setPosition(body, randPos);
+      });
+
+      const worldSnake = this.physics.engine.world.bodies.find(body => body.id === snake.body.id);
+      if (!worldSnake) {
+        MWorld.add(this.physics.engine.world, snake.body);
       }
+    });
+    this.world.reset();
+  }
 
-      this.world = new World(this.generationCount, this.physics, this.width, this.height);
-    } else {
-      this.isInitialGeneration = false;
-    }
-
+  start() {
+    this.reset();
     this.world.begin();
   }
 }

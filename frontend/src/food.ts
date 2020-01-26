@@ -1,5 +1,5 @@
+import { Composite, Vector, Body } from "matter-js";
 import { GameObject, GameObjectType } from "./utils";
-import { Body, Vector } from "matter-js";
 
 const MAX_FOOD_AGE = 30 * 1000;
 
@@ -17,7 +17,7 @@ export class Food implements GameObject {
     public value: number = 500,
   ) { }
 
-  updateVelocity(velocity: Vector): void { }
+  setVelocity(velocity: Vector): void { }
 
   update(): void {
     if (this.dead) {

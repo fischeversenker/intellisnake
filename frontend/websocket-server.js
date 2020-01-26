@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 8765 });
 
 const MESSAGE_TYPES = {
+  START: 'start',
   GENERATION: 'generation',
   DATA: 'data'
 };
@@ -15,9 +16,14 @@ wss.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
     const data = JSON.parse(message);
     console.log(`[SERVER]: <<< received message of type ${data.type} and ID ${data.messageId}`);
-    if (data.type === MESSAGE_TYPES.GENERATION) {
+
+    if (data.type === MESSAGE_TYPES.START) {
       setTimeout(() => {
-        ws.send(JSON.stringify({ messageId: data.messageId, type: MESSAGE_TYPES.GENERATION, data: { generation: ++genCount} }));
+        ws.send(JSON.stringify({ messageId: data.messageId, type: MESSAGE_TYPES.START, data: { generation: genCount } }));
+      }, (50));
+    } else if (data.type === MESSAGE_TYPES.GENERATION) {
+      setTimeout(() => {
+        ws.send(JSON.stringify({ messageId: data.messageId, type: MESSAGE_TYPES.START, data: { generation: genCount } }));
       }, 500);
     } else if (frameCount >= GEN_COUNT || (data.data.snakeIds && data.data.snakeIds.length === 0)) {
       frameCount = 0;
