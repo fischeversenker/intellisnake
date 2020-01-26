@@ -98,9 +98,7 @@ export class World implements MessageListener {
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
-      if (this.aliveSnakes.length > 0) {
-        this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
-      }
+      this.sendWebSocketMessage(MessageType.DATA, this.currentSnakesData());
     }
 
     this.tickCount++;
