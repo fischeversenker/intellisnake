@@ -135,7 +135,7 @@ class AI():
                 "progress": [frameProgress]
                }
 
-     def updateModel(self,dict_):
+    def updateModel(self,dict_):
         w = self.getModelWeights()
 
         A_dict = self.getReward(dict_)
