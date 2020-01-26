@@ -31,7 +31,7 @@ class WebSocketServer:
         return {item['id']:item['color'] for item in messageData})
 
     def processMessageTypeGeneration(self,messageData):
-        return {item['id']:item['energyIntake'] for item in messageData})
+        return {item['id']:item['energyIntake'] for item in messageData}
 
     async def communication(self, websocket, path):
         async for data in websocket:
