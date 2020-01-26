@@ -1,4 +1,4 @@
-import { Body, Vector } from "matter-js";
+import { Body, Composite, Vector } from "matter-js";
 
 export enum GameObjectType {
   'NONE' = 0,
@@ -10,9 +10,9 @@ export enum GameObjectType {
 export interface GameObject {
   type: GameObjectType;
   id: number;
-  body: Body;
+  body: Composite | Body;
   dead: boolean;
-  updateVelocity?: (velocity: Vector) => void;
+  setVelocity?: (velocity: Vector) => void;
 }
 
 export interface WorldDataObject {

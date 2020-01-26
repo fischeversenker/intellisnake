@@ -1,4 +1,4 @@
-import Matter, { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World } from 'matter-js';
+import Matter, { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World, Vector, Composite } from 'matter-js';
 import { GameObjectType } from './utils';
 
 export const STARTING_BODY_ID = 666;
@@ -11,6 +11,7 @@ const ME_COLOR = 'white';
 const SNAKE_HEAD_SIZE = 8;
 const SNAKE_TAIL_SIZE = 6;
 const FOOD_SIZE = 24;
+const FOOD_COLOR = 'rgb(234, 123, 198)';
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -107,48 +108,38 @@ export class Physics {
     this.matterCommon._nextId = STARTING_BODY_ID;
   }
 
-  addRandomSnake(): { head: Body, tail: Body[], constraints: Constraint[] } {
-    const randomX = BOUNDARY_WIDTH * 3 + Math.random() * (this.width - BOUNDARY_WIDTH * 6);
-    const randomY = BOUNDARY_WIDTH * 3 + Math.random() * (this.height - BOUNDARY_WIDTH * 6);
-    const snake = this.createSnakeBody(randomX, randomY, 10);
-    World.add(this.engine.world, [snake.head, ...snake.tail]);
-    World.add(this.engine.world, snake.constraints);
+  getRandomSnake(): Composite {
+    const randomPos = this.getRandomPosition();
+    const snake = this.createSnakeBody(randomPos.x, randomPos.y, 10);
     return snake;
   }
 
-  createSnakeBody(x: number, y: number, length: number): { head: Body, tail: Body[], constraints: Constraint[] } {
-    // get an existing snake color or add a random one
-    let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
-    if (snakeColors.has(this.snakesOnWorld.length)) {
-      snakeColor = snakeColors.get(this.snakesOnWorld.length) as string;
-    } else {
-      snakeColors.set(this.snakesOnWorld.length, snakeColor);
-    }
-
+  createSnakeBody(x: number, y: number, length: number): Composite {
     const snakeOptions: IBodyDefinition = {
-      friction: 0,
+      friction: 0.1,
       frictionAir: 0.05,
       density: 1,
       mass: 1,
       label: String(GameObjectType.SNAKE),
-      render: {
-        fillStyle: snakeColor,
+      collisionFilter: {
+        group: Body.nextGroup(true),
       },
     }
     const head = Bodies.circle(x, y, SNAKE_HEAD_SIZE, { ...snakeOptions });
+
     const tail = [];
     const constraints = [];
     for (let i = 1; i <= length; i++) {
-      const isFirst = i === 1;
-      const incX = i * SNAKE_HEAD_SIZE * (isFirst ? 1.6 : 1.4);
-      const incY = i * SNAKE_HEAD_SIZE * (isFirst ? 1.6 : 1.4);
-      const tailPiece = Bodies.circle(x + incX, y - incY, SNAKE_TAIL_SIZE, {
+      const tailPiece = Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
         ...snakeOptions,
         label: 'snake-tail',
       });
       const constraint = Constraint.create({
-        bodyA: isFirst ? head : tail[i - 2],
+        bodyA: (i === 1) ? head : tail[i - 2],
         bodyB: tailPiece,
+        stiffness: 0.1,
+        damping: 0.1,
+        length: 1.4 * SNAKE_HEAD_SIZE,
         render: {
           visible: false,
           lineWidth: 0,
@@ -158,37 +149,48 @@ export class Physics {
       tail.push(tailPiece);
       constraints.push(constraint);
     }
-    return { head, tail, constraints };
+    const snakeComposite = Composite.create({
+      label: String(GameObjectType.SNAKE),
+      bodies: [head, ...tail],
+      constraints: constraints,
+    });
+
+    // get an existing snake color or add a random one
+    let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
+    if (snakeColors.has(snakeComposite.id)) {
+      snakeColor = snakeColors.get(snakeComposite.id) as string;
+    } else {
+      snakeColors.set(snakeComposite.id, snakeColor);
+    }
+
+    head.render.fillStyle = snakeColor;
+    tail.forEach(tailPiece => tailPiece.render.fillStyle = snakeColor);
+
+    return snakeComposite;
   }
 
-  addFood(x: number, y: number): Body {
+  getRandomPosition(): Vector {
+    const randomX = BOUNDARY_WIDTH * 3 + Math.random() * (this.width - BOUNDARY_WIDTH * 6);
+    const randomY = BOUNDARY_WIDTH * 3 + Math.random() * (this.height - BOUNDARY_WIDTH * 6);
+    return Vector.create(randomX, randomY);
+  }
+
+  getFood(x: number, y: number): Body {
     const food = this.createFood(x, y);
-    World.add(this.engine.world, food);
     return food;
   }
 
   createFood(x: number, y: number = 500): Body {
-    const halo = Bodies.circle(x, y, FOOD_SIZE, {
+    return Bodies.circle(x, y, FOOD_SIZE, {
       label: String(GameObjectType.FOOD),
       friction: 0,
-      frictionAir: 0.4,
-      render: {
-        fillStyle: 'white',
-        opacity: 0.1,
-      },
-    });
-    const foodBody = Bodies.rectangle(x, y, FOOD_SIZE / 1.5, FOOD_SIZE / 1.5, {
-      label: String(GameObjectType.FOOD),
-      friction: 0,
-      frictionAir: 0.4,
-    });
-    const food = Body.create({
-      label: String(GameObjectType.FOOD),
-      parts: [foodBody, halo],
       frictionAir: 0.4,
       inertia: 0,
+      render: {
+        fillStyle: FOOD_COLOR,
+        opacity: 1,
+      },
     });
-    return food;
   }
 
   run() {
@@ -218,18 +220,9 @@ export class Physics {
     this.matterCommon._nextId = STARTING_BODY_ID;
   }
 
-  renderAsMe(...bodies: Body[]): ImageData {
-    let origColor: string | undefined;
-    // set ME_COLOR for all body parts
-    bodies.forEach(body => {
-      origColor = body.render.fillStyle;
-      body.render.fillStyle = ME_COLOR;
-    });
+  getImageData(): ImageData {
 
-    // render world with temp renderer to not disturb
-    // the shown (correctly colored) main rendering
-    let meData;
-    Render.world(this.tempRender);
+    let imgData: ImageData;
     if (this.render && this.render.canvas) {
       const context = this.render.canvas.getContext('2d');
       if (context) {
@@ -237,19 +230,10 @@ export class Physics {
         if (tempRenderContext) {
           tempRenderContext.clearRect(0, 0, this.width, this.height);
           tempRenderContext.drawImage(context.canvas, 0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
-          meData = tempRenderContext.getImageData(0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
+          imgData = tempRenderContext.getImageData(0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
         }
       }
     }
-
-    // reset orig colors
-    bodies.forEach(body => {
-      body.render.fillStyle = origColor;
-    });
-
-    if (!meData) {
-      throw new Error('could not get image data for bodies');
-    }
-    return meData as ImageData;
+    return imgData!;
   }
 }
