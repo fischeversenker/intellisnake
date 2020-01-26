@@ -145,6 +145,10 @@ export class World implements MessageListener {
     return this.gameObjects.filter(gO => gO.type !== GameObjectType.SNAKE);
   }
 
+  get snakeIds(): number[] {
+    return this.aliveSnakes.map(snake => snake.id);
+  }
+
   onMessage(message: Message) {
     switch (message.type) {
       case MessageType.ERROR:
