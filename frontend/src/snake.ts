@@ -3,7 +3,7 @@ import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
 export const SNAKE_LENGTH = 50;
-export const SNAKE_ENERGY_LEVEL_INITIAL = 1000;
+export const SNAKE_ENERGY_LEVEL_INITIAL = 10000;
 
 export class Snake implements GameObject {
 
@@ -28,6 +28,7 @@ export class Snake implements GameObject {
     // const force = Vector.mult(newVelocity, 0.02);
     // const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
     // Body.applyForce(this.head, oldPosition, force);
+
     Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
   }
 

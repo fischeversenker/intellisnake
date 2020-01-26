@@ -81,9 +81,9 @@ export class App implements MessageListener {
         for (let destination in message.data.prediction) {
           let snake = this.world.snakes.find(gO => Number(gO.id) === Number(destination));
           if (snake) {
-            const x = message.data.prediction[snake.id][0];
-            const y = message.data.prediction[snake.id][1];
-            snake.setVelocity(Vector.create(x, y));
+            // const x = message.data.prediction[snake.id][0];
+            // const y = message.data.prediction[snake.id][1];
+            // snake.setVelocity(Vector.create(x, y));
           }
         }
         break;
@@ -115,10 +115,10 @@ export class App implements MessageListener {
     this.world.snakes.forEach(snake => {
       snake.reset();
 
-      const randPos = this.physics.getRandomPosition();
-      snake.body.bodies.forEach(body => {
-        Body.setPosition(body, randPos);
-      });
+      // const randPos = this.physics.getRandomPosition();
+      // snake.body.bodies.forEach(body => {
+      //   Body.setPosition(body, randPos);
+      // });
 
       const worldSnake = this.physics.engine.world.bodies.find(body => body.id === snake.body.id);
       if (!worldSnake) {
