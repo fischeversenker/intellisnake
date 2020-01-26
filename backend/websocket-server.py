@@ -7,7 +7,7 @@ import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 from ai import AI
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 class WebSocketServer:
@@ -57,7 +57,7 @@ class WebSocketServer:
         elif messageType == "generation":
             data = self.processMessageTypeGeneration(messageData)
             if DEBUG_MODE:
-                print("new generation...")
+                print("evole generation...")
             self.nes.updateModel(data)
             self.generation = self.generation +1
             if DEBUG_MODE:

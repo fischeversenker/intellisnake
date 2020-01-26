@@ -70,6 +70,7 @@ class AI():
     def getReward(self,dict_):
         R = dict_.values()
         keys = dict_.keys()
+        print("total energyIntake: {}".format(sum(R)))
         if sum(R) == 0:
             R= [np.random.rand() for r in R]
         A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
@@ -133,7 +134,7 @@ class AI():
         frameProgress = self.frameCount/self.FramesPerEpoch
         return {
                 "prediction": outputDict,
-                "progress": [frameProgress]
+                "progress": frameProgress
                }
 
     def updateModel(self,dict_):
@@ -153,5 +154,6 @@ class AI():
         self.population = None
         self.W_try = None
         self.N = None
+        self.frameCount = 0
 
     
