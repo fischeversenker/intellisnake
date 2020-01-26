@@ -60,7 +60,8 @@ class AI():
     def preprocessInput(self,data_):
         inputArray = np.array(data_["matrix"].values[0])
         if len(np.unique(data_["matrix"].values[0])) > self.levels:
-            print("Input Data contains to many different values \n expected: {} got: {}".format(self.levels,len(np.unique(data_["matrix"].values[0]))))
+           pass
+           # print("Input Data contains to many different values \n expected: {} got: {}".format(self.levels,len(np.unique(data_["matrix"].values[0]))))
         inputArray = inputArray/self.levels #scale to range [0,1]
         inputArray = self.reshaping(inputArray)
         return inputArray
@@ -116,7 +117,6 @@ class AI():
         pred_ = [float(pred[0][0]),float(pred[0][1])]
         if pred_[0] == None:
             print("Nan pred!")
-
         return pred_
 
     def runModel(self,data):
@@ -130,13 +130,14 @@ class AI():
         outputDict = {}
         data["id_internal"] = data["id"].astype(int).map(self.IDs)
         for id, id_ in zip(data["id_internal"], data["id"]):
+
           data_  = self.getSingleInput(data,id_)
           inputArray = self.preprocessInput(data_)
           try:
              pred_ = self.makePrediction(id,inputArray)
           except:
                pred_ = [0,0]
-          print(pred_)
+          #print(pred_)
         
           outputDict.update([(id_,pred_)],)
 
