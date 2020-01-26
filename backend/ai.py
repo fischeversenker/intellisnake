@@ -55,7 +55,6 @@ class AI():
 
     def applyMask(self,inputArray,mask):
         np.place(inputArray, mask, [1,1,1]) #set values where mask is true to 1
-        print(inputArray.shape)
         inputArray_ = np.reshape(inputArray,(-1 , self.shape, self.shape,3)) #reshape to keras input
         return inputArray_
 
@@ -144,11 +143,11 @@ class AI():
         A_dict_ = {i:A_dict[i] for i in self.N.keys()} #assure dicts have same order
         A = list(A_dict_.values())
         N = list(self.N.values())
-
+ 
         for i in range(len(w)):
             n_ = np.dot( np.array(N)[:,i].T,A) #sum up all the rows of noise matrix for each layer and each row is weighted by A
             n_ = np.reshape(n_,w[i].shape)
-            w[i] = w[i] + (self.alpha/(self.npop*self.sigma))*n_
+            w[i] = w[i] + (self.alpha/(len(self.population)*self.sigma))*n_
 
         self.model.set_weights(w)
         self.population = None
