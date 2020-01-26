@@ -28,14 +28,14 @@ class WebSocketServer:
         return messageData["matrix"],messageData["snakeIds"]
 
     def processMessageTypeStart(self,messageData):
-        return {item['id']:item['color'] for item in messageData})
+        return {item['id']:item['color'] for item in messageData["snakes"]}
 
     def processMessageTypeGeneration(self,messageData):
-        return {item['id']:item['energyIntake'] for item in messageData})
+        return {item['id']:item['energyIntake'] for item in messageData["snakes"]}
 
     async def communication(self, websocket, path):
         async for data in websocket:
-            message = json.loads(data)git 
+            message = json.loads(data)
             await self.processMessage(websocket, message["messageId"], message["type"], message["data"])
 
     async def processMessage(self, websocket, messageId, messageType, messageData = {}):
@@ -51,7 +51,7 @@ class WebSocketServer:
                 self.nes.startModel(data)
                 if DEBUG_MODE:
                     print("done...")
-                await self.sendMessage(websocket, messageId, "start", data =self.generation)
+                await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
                 self.started = True
 
         elif messageType == "generation":

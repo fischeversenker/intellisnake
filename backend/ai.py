@@ -27,6 +27,7 @@ class AI():
         self.frameCount = 0
         self.FramesPerEpoch = 20
         self.masks = None
+        self.population = None
 
     def buildModel(self):
         input_ = Input(shape=(self.shape,self.shape,3))
@@ -50,17 +51,18 @@ class AI():
         self.masks = {}
         for element in list_:
             mymask = inputArray ==[ self.IDs[element]]
-            self.masks([(element,mymask)],)
+            self.masks.update([(element,mymask)],)
 
     def applyMask(self,inputArray,mask):
-        inputArray = np.place(inputArray, mask, [1,1,1]) #set values where mask is true to 1
-        inputArray_ = np.reshape(inputArray_,(-1 , self.shape, self.shape,1)) #reshape to keras input
+        np.place(inputArray, mask, [1,1,1]) #set values where mask is true to 1
+        print(inputArray.shape)
+        inputArray_ = np.reshape(inputArray,(-1 , self.shape, self.shape,3)) #reshape to keras input
         return inputArray_
 
     def preprocessInput(self,matrix,list_):
         inputArray = self.reshaping(matrix)
         self.createMask(inputArray,list_)
-        inputArray= (input/255.0)*0.9 #assure distance to currently controlled snake
+        inputArray= (inputArray/255.0)*0.9 #assure distance to currently controlled snake
         return inputArray
 
     def getModelWeights(self):
@@ -112,15 +114,15 @@ class AI():
         self.IDs = dict_
         self.buildModel()
 
-    def runModel(self,matrix,dict_):
+    def runModel(self,matrix,list_):
         if self.population == None:
-            self.population = list(dict_,keys())
+            self.population = list_
         if self.N == None:
              self.createNoiseMatrix()
         if self.W_try == None:
              self.applyNoise()
 
-        population = list(dict_,keys())
+        population = list_
         outputDict = {}
         inputArray = self.preprocessInput(matrix,population)
         for element in population:
@@ -135,7 +137,7 @@ class AI():
                 "progress": [frameProgress]
                }
 
-     def updateModel(self,dict_):
+    def updateModel(self,dict_):
         w = self.getModelWeights()
 
         A_dict = self.getReward(dict_)
