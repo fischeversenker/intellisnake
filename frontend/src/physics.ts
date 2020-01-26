@@ -116,7 +116,7 @@ export class Physics {
 
   createSnakeBody(x: number, y: number, length: number): Composite {
     const snakeOptions: IBodyDefinition = {
-      friction: 0,
+      friction: 0.1,
       frictionAir: 0.05,
       density: 1,
       mass: 1,
@@ -130,18 +130,16 @@ export class Physics {
     const tail = [];
     const constraints = [];
     for (let i = 1; i <= length; i++) {
-      const isFirst = i === 1;
-      const incX = i * SNAKE_HEAD_SIZE * (isFirst ? 1.6 : 1.4);
-      const incY = i * SNAKE_HEAD_SIZE * (isFirst ? 1.6 : 1.4);
-      const tailPiece = Bodies.circle(x + incX, y - incY, SNAKE_TAIL_SIZE, {
+      const tailPiece = Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
         ...snakeOptions,
         label: 'snake-tail',
       });
       const constraint = Constraint.create({
-        bodyA: isFirst ? head : tail[i - 2],
+        bodyA: (i === 1) ? head : tail[i - 2],
         bodyB: tailPiece,
         stiffness: 0.1,
         damping: 0.1,
+        length: 1.4 * SNAKE_HEAD_SIZE,
         render: {
           visible: false,
           lineWidth: 0,
