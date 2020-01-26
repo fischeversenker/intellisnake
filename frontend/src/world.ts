@@ -21,8 +21,6 @@ export class World implements MessageListener {
   private gameObjects: GameObject[] = [];
   private tickCount = 0;
 
-  champions: Snake[] = [];
-
   constructor(
     public generationCount: number = 0,
     private physics: Physics,
@@ -42,10 +40,6 @@ export class World implements MessageListener {
 
     this.websocket = Websocket.getInstance();
     console.log('[WORLD]: ... ready');
-  }
-
-  get snakeIds(): number[] {
-    return this.aliveSnakes.map(snake => snake.id);
   }
 
   begin() {

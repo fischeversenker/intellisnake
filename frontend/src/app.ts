@@ -13,7 +13,6 @@ export class App implements MessageListener {
   private generationCount = 0;
   private lastMessage = 0;
   private lastAckData: any;
-  private lastSurvivors: Snake[] = [];
   private physics: Physics;
   private generationProgress = 0;
 
@@ -50,7 +49,7 @@ export class App implements MessageListener {
   }
 
   onWebsocketClose(evt: any): void {
-    console.log('[MAIN]:', evt);
+    console.log('[MAIN]: closed connection to server.', evt);
     if (this.world) {
       this.world.stop();
       delete this.world;
@@ -61,7 +60,7 @@ export class App implements MessageListener {
     this.lastMessage = Date.now();
     if (message.type === MessageType.GENERATION) {
       this.generationCount = message.data.generation as number;
-      console.log('[APP]: starting generation', this.generationCount);
+      console.log('[MAIN]: starting new generation: #', this.generationCount);
       this.startNewGeneration();
     } else {
       if (message.data && message.data.progress) {
@@ -73,21 +72,12 @@ export class App implements MessageListener {
     }
   }
 
-  init() {
-    document.addEventListener('keydown', (evt) => {
-      if (evt.key === 's' && !evt.ctrlKey && this.world) {
-        this.world.stop();
-      }
-    });
-  }
-
   startNewGeneration() {
     if (this.world) {
-      this.lastSurvivors = this.world.champions;
       this.world.destroy();
     }
+
     this.world = new World(this.generationCount, this.physics, this.width, this.height);
     this.world.begin();
   }
-
 }
