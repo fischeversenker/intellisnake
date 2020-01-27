@@ -15,7 +15,6 @@ class WebSocketServer:
 
     def __init__(self):
         self.nes = AI()
-        self.started = False
         self.generation = 0
         self.model = []
         self.previousMessageData = None
@@ -41,18 +40,17 @@ class WebSocketServer:
     async def processMessage(self, websocket, messageId, messageType, messageData = {}):
 
         if DEBUG_MODE:
-            print("Processing new message:  id: {},  type: {},  len: {}\nState:  started: {}".format(messageId, messageType, len(messageData), str(self.started)))
+            print("Processing new message:  id: {},  type: {},  len: {}".format(messageId, messageType, len(messageData)))
       
         if messageType == "start":
             data = self.processMessageTypeStart(messageData)
-            if not self.started:
-                if DEBUG_MODE:
-                    print("starting...")
-                self.nes.startModel(data)
-                if DEBUG_MODE:
-                    print("done...")
-                await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
-                self.started = True
+            if DEBUG_MODE:
+                print("starting...")
+            self.nes.startModel(data)
+            if DEBUG_MODE:
+                print("done...")
+            await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
+            self.started = True
 
         elif messageType == "generation":
             data = self.processMessageTypeGeneration(messageData)
