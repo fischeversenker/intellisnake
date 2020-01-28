@@ -18,6 +18,7 @@ class WebSocketServer:
         self.generation = 0
         self.model = []
         self.previousMessageData = None
+        self.started = False
 
     def start(self):
         print("server running...")
@@ -51,6 +52,7 @@ class WebSocketServer:
                 print("done...")
             await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
             self.started = True
+            self.generation = 0
 
         elif messageType == "generation":
             data = self.processMessageTypeGeneration(messageData)

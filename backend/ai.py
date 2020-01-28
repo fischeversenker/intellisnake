@@ -14,7 +14,7 @@ import time
 class AI():
     def __init__(self):
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.000001 # learning rate
+        self.alpha = 0.00001 # learning rate
         self.shape = 32 #input size of NN
         self.N = None # dict to store n noiseMatrix
         self.W_try = None # dict to store weights
@@ -24,6 +24,7 @@ class AI():
         self.frameCount = 0
         self.FramesPerEpoch = 300
         self.population = None
+        self.entityCentricScaling = 0.5
 
     def startModel(self,dict_):
         self.IDs = dict_
@@ -60,40 +61,38 @@ class AI():
         encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='relu')(encoder)
         encoder = MaxPooling2D((2, 2))(encoder)
         x = Flatten()(encoder)
-        x = Dense(units= 64, activation = 'tanh')(x)
-        x = Dense(units= 2, activation = 'tanh')(x)
+        x = Dense(units= 32, activation = 'relu')(x)
         output = Dense(units = 2, activation='tanh')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
 
-    def reshaping(self, inputArray):
-        shape = int(np.sqrt(len(inputArray))) #get len and width of 2dmatrix
-        inputArray = np.array(inputArray).reshape(-1, 3)
-        inputArray = np.array(inputArray).reshape(shape, shape, 3)
-        img = Image.fromarray(inputArray,'RGB')
+    def reshaping(self,L):
+        shape = int(np.sqrt(len(L))) #get len and width of 2dmatrix
+        a = np.array(L).reshape(shape, shape, 3)
+        img = Image.fromarray(a.astype('uint8'),'RGB')
         img = img.resize((self.shape,self.shape), Image.ANTIALIAS)
         return np.array(img)
 
     def preprocessInput(self,matrix):
-        inputArray = self.reshaping(matrix)
-        inputArray = (inputArray/255.0)*0.9 #assure distance to currently controlled snake
-        return inputArray
+        a = self.reshaping(matrix)
+        return (a/255.0)*self.entityCentricScaling
 
-    def applyMask(self,inputArray,element):
-        inputArray = np.where(inputArray == (np.array(self.IDs[element])/255)*0.9, [1,1,1], inputArray)
-        return np.reshape(inputArray,(-1 , self.shape, self.shape,3))
+    def applyMask(self,a,x):
+        b = np.where(a == (np.array(self.IDs[x])/255)*self.entityCentricScaling, [1,1,1], a)
+        return np.reshape(b,(-1 , self.shape, self.shape,3))
 
     def getModelWeights(self):
         return np.array(self.model.get_weights())
 
     def getReward(self,dict_):
         R = list(dict_.values())
+        print("{} Total EnergyIntake with {} contributing".format(sum(R), len(R)-R.count(0)))
         keys = list(dict_.keys())
         if sum(R) == 0:
-            R= [np.random.rand() for r in R]
-        A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
-        A = dict(zip(keys,A))
-        return A
+            A= [0 for r in R]
+        else:
+            A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
+        return dict(zip(keys,A))
 
     def evoleNetwork(self,A,N,w):
         for i in range(len(w)):
