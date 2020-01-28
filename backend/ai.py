@@ -86,7 +86,7 @@ class AI():
 
     def getReward(self,dict_):
         R = list(dict_.values())
-        print("{} Total EnergyIntake with {} contributing".format(sum(R), len(R)-R.count(0)))
+        print("{} Units EnergyIntake from {} snakes".format(sum(R), len(R)-R.count(0)))
         keys = list(dict_.keys())
         if sum(R) == 0:
             A= [0 for r in R]
