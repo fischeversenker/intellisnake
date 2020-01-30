@@ -14,7 +14,6 @@ export class App implements MessageListener {
   private lastMessage = 0;
   private physics: Physics;
   private generationProgress = 0;
-  private ranOnce = false;
 
   constructor(
     private rootElement: HTMLElement,
@@ -111,12 +110,11 @@ export class App implements MessageListener {
       snake.setPosition(randPos);
 
       const worldSnake = Composite.allBodies(this.physics.world).find(body => snake.containsBody(body));
-      if (!worldSnake && this.ranOnce) {
+      if (!worldSnake) {
         MWorld.add(this.physics.world, snake.body);
       }
     });
     this.world.reset();
-    this.ranOnce = true;
   }
 
   start() {
