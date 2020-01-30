@@ -7,8 +7,8 @@ const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
 
-const SNAKE_HEAD_SIZE = 20;
-const SNAKE_TAIL_SIZE = 16;
+const SNAKE_HEAD_SIZE = 16;
+const SNAKE_TAIL_SIZE = 12;
 const FOOD_SIZE = 24;
 const FOOD_COLOR = 'rgb(234, 123, 198)';
 
@@ -132,7 +132,7 @@ export class Physics {
     const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
       return Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
         chamfer: 5,
-        frictionAir: 0.01,
+        frictionAir: 0.1,
         collisionFilter: { group },
         label: GameObjectType.SNAKE_TAIL,
       } as IBodyDefinition);
@@ -146,7 +146,7 @@ export class Physics {
     Composites.chain(composite, 0, 0.3, 0, -0.3, {
       stiffness: 0,
       length: 0,
-      damping: 0.1,
+      damping: 0.6,
       render: {
         visible: false,
       },
