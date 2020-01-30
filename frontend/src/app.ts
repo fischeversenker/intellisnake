@@ -144,7 +144,14 @@ export class App implements MessageListener {
             <th>Alive snakes:</td><td>${this.world.aliveSnakes.length}</td>
           </tr>
           <tr>
-            <th>Progress:</td><td><progress value="${this.generationProgress}" max="1"></progress></td>
+            <th>Progress:</td>
+            <td>
+              <div class="progress-bar">
+                <span class="bar">
+                  <span class="progress" style="--progress:${Math.floor(this.generationProgress * 100)}%;"></span>
+                </span>
+              </div>
+            </td>
           </tr>
         </table>
         <small>(you can toggle this overlay by pressing the i key)</small>
