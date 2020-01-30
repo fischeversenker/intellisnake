@@ -1,10 +1,9 @@
-import { Body, Engine, Events, IEventCollision, Vector, World as MWorld } from "matter-js";
-import { GENERATION_DURATION_MS } from "./app";
+import { Body, Engine, Events, IEventCollision, IPair, World as MWorld } from "matter-js";
 import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
 import { GameObject, GameObjectType } from "./utils";
-import { Message, MessageListener, MessageType, Websocket, MessageId } from "./websocket";
+import { MessageId, MessageType, Websocket } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
 export const GENERATION_SNAKE_COUNT = 20;
@@ -46,7 +45,7 @@ export class World {
 
   reset() {
     this.nonSnakes.forEach(nonSnake => {
-      MWorld.remove(this.physics.engine.world, nonSnake.body);
+      MWorld.remove(this.physics.world, nonSnake.body);
     });
     this.gameObjects = this.gameObjects.filter(gameObject => gameObject.type === GameObjectType.SNAKE);
     this.pendingWebSocketRequests = [];
@@ -72,7 +71,7 @@ export class World {
       const x = this.sampleNormalDistribution() * this.width;
       const y = this.sampleNormalDistribution() * this.height;
       const foodBody = this.physics.getFood(x, y);
-      MWorld.add(this.physics.engine.world, foodBody);
+      MWorld.add(this.physics.world, foodBody);
       const food = new Food(foodBody.id, foodBody, 500);
       this.gameObjects.push(food);
     }
@@ -82,7 +81,7 @@ export class World {
         gameObject.update();
       }
       if (gameObject.dead) {
-        MWorld.remove(this.physics.engine.world, gameObject.body);
+        MWorld.remove(this.physics.world, gameObject.body);
       }
     });
     this.gameObjects = [
@@ -102,7 +101,7 @@ export class World {
   }
 
   handleCollissions = (event: IEventCollision<Engine>) => {
-    const foodPairs = event.pairs.filter(pair => {
+    const foodPairs = event.pairs.filter((pair: IPair) => {
       if (pair.bodyA.label === String(GameObjectType.SNAKE_TAIL) || pair.bodyB.label === String(GameObjectType.SNAKE_TAIL)) {
         return false;
       }
@@ -111,7 +110,7 @@ export class World {
       return aIsSnakeBIsFood || bIsSnakeAIsFood;
     });
 
-    foodPairs.forEach(pair => {
+    foodPairs.forEach((pair: IPair) => {
       let snake: Snake, snakeBody: Body, food: Food, foodBody: Body;
 
       if (pair.bodyA.label === String(GameObjectType.FOOD)) {
@@ -128,7 +127,7 @@ export class World {
       if (snake && food) {
         snake.eat(food);
       }
-      MWorld.remove(this.physics.engine.world, foodBody);
+      MWorld.remove(this.physics.world, foodBody);
     });
   }
 

@@ -1,0 +1,23 @@
+{
+  "name": "intellisnake",
+  "version": "0.0.1",
+  "description": "TypeScript project. No 3rd party deps except during development (nodemon, etc), see frontend/package.json.",
+  "scripts": {
+    "start:frontend": "cd frontend && npm run dev",
+    "start:backend": "cd backend && python websocket-server.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fischeversenker/intellisnake.git"
+  },
+  "keywords": [
+    "ai",
+    "snake"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fischeversenker/intellisnake/issues"
+  },
+  "homepage": "https://github.com/fischeversenker/intellisnake#readme"
+}
