@@ -22,7 +22,7 @@ class AI():
         self.W_try = None # dict to store weights
         self.model = []
         self.IDs = {}
-        self.FilePathLog = "./log/"
+        self.FilePathModels = "./models/"
         self.frameCount = 0
         self.FramesPerEpoch = 300
         self.population = None
@@ -45,6 +45,9 @@ class AI():
         self.frameCount = self.frameCount + 1
         frameProgress = self.frameCount/self.FramesPerEpoch
         return { "prediction": outputDict, "progress": frameProgress }
+
+    def saveModel(self, generation):
+        self.model.save_weights("{}{}.h5".format(self.FilePathModels,str(generation)))
 
     def updateModel(self,dict_):
         self.evoleModel(dict_)
@@ -72,11 +75,14 @@ class AI():
 
     def evoleModel(self,dict_):
         A = self.getReward(dict_)
-        w = self.getModelWeights()
-        N = self.weighting(A,self.N)
-        w_add = self.weightedSumWeights(N,w)
-        w = w + w_add
-        self.model.set_weights(w)
+        if sum(list(A.values())) == 0:
+            pass
+        else:
+            w = self.getModelWeights()
+            N = self.weighting(A,self.N)
+            w_add = self.weightedSumWeights(N,w)
+            w = w + w_add
+            self.model.set_weights(w)
 
     def getModelWeights(self):
         return np.array(self.model.get_weights())
