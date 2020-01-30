@@ -1,13 +1,12 @@
-import { Body, Engine, Events, IEventCollision, Vector, World as MWorld } from "matter-js";
-import { GENERATION_DURATION_MS } from "./app";
+import { Body, Engine, Events, IEventCollision, World as MWorld } from "matter-js";
 import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
 import { GameObject, GameObjectType } from "./utils";
-import { Message, MessageListener, MessageType, Websocket, MessageId } from "./websocket";
+import { MessageId, MessageType, Websocket } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
-export const GENERATION_SNAKE_COUNT = 1;
+export const GENERATION_SNAKE_COUNT = 4;
 
 let worldCount = 0;
 
@@ -28,7 +27,7 @@ export class World {
   ) {
     console.log('[WORLD]: building new world...');
     Events.on(this.physics.engine, 'beforeUpdate', this.update);
-    Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
+    // Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
 
     this.websocket = Websocket.getInstance();
     console.log('[WORLD]: ... ready');
@@ -92,10 +91,10 @@ export class World {
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
-      this.sendWebSocketMessage(MessageType.DATA, {
-        matrix: this.toBitMatrix(),
-        snakeIds: this.snakeIds,
-      });
+      // this.sendWebSocketMessage(MessageType.DATA, {
+      //   matrix: this.toBitMatrix(),
+      //   snakeIds: this.snakeIds,
+      // });
     }
 
     this.tickCount++;

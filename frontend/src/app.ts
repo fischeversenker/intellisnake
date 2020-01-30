@@ -94,11 +94,13 @@ export class App implements MessageListener {
 
   init() {
     // add snakes
+    // this.physics.addSnakes(1);
     for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
       const snakeComposite = this.physics.getRandomSnake();
       MWorld.add(this.physics.engine.world, snakeComposite);
       const snake = new Snake(snakeComposite);
-      this.world.addGameObject(snake);
+      // this is the culprite. Without this the snake does not jiggle like craaaazy! :)
+      // this.world.addGameObject(snake);
     }
 
     const snakesData = this.world.snakes.map(snake => ({

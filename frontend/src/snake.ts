@@ -25,11 +25,11 @@ export class Snake implements GameObject {
   }
 
   setVelocity(newVelocity: Vector): void {
-    // const force = Vector.mult(newVelocity, 0.02);
-    // const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
-    // Body.applyForce(this.head, oldPosition, force);
+    const force = Vector.mult(newVelocity, 0.02);
+    const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
+    Body.applyForce(this.head, oldPosition, force);
 
-    Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
+    // Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
   }
 
   containsBody(body: Body) {
@@ -37,7 +37,7 @@ export class Snake implements GameObject {
   }
 
   setPosition(position: Vector) {
-    Body.setPosition(this.head, position)
+    // Body.setPosition(this.head, position)
   }
 
   update(): void {

@@ -1,4 +1,4 @@
-import Matter, { Bodies, Body, Composite, Composites, Constraint, Engine, IBodyDefinition, Render, Runner, Vector, World } from 'matter-js';
+import Matter, { Bodies, Body, Composite, Composites, Constraint, Engine, IBodyDefinition, Render, Runner, Vector, World, IChamfer, Mouse, MouseConstraint, IMouseConstraintDefinition } from 'matter-js';
 import { GameObjectType } from './utils';
 
 export const STARTING_BODY_ID = 666;
@@ -8,8 +8,8 @@ const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
 const ME_COLOR = 'white';
 
-const SNAKE_HEAD_SIZE = 8;
-const SNAKE_TAIL_SIZE = 6;
+const SNAKE_HEAD_SIZE = 20;
+const SNAKE_TAIL_SIZE = 16;
 const FOOD_SIZE = 24;
 const FOOD_COLOR = 'rgb(234, 123, 198)';
 
@@ -39,7 +39,7 @@ export class Physics {
   ) {
     // create an engine
     this.engine = Engine.create();
-    // this.engine.world.gravity = { x: 0, y: 0, scale: 0 };
+    this.engine.world.gravity = { x: 0, y: 0, scale: 0 };
 
     // create a renderer
     this.render = Render.create({
@@ -48,7 +48,7 @@ export class Physics {
       options: {
         width: this.width,
         height: this.height,
-        wireframes: true,
+        wireframes: false,
       },
     });
 
@@ -106,87 +106,77 @@ export class Physics {
     // on the world before you even start working on it. The starting id was always 5 for me.
     // to overcome this we start with an arbitrary (but higher than 5) number as our starting id.
     this.matterCommon._nextId = STARTING_BODY_ID;
+
+    // const composite = this.getRandomSnake();
+    // World.add(this.engine.world, composite);
+
+    // add mouse control
+    const mouse = Mouse.create(this.render.canvas);
+    const mouseConstraint = MouseConstraint.create(this.engine, {
+            mouse: mouse,
+            constraint: {
+                stiffness: 0.2,
+                render: {
+                    visible: false
+                }
+            }
+        } as IMouseConstraintDefinition);
+
+    World.add(this.engine.world, mouseConstraint);
+
+    // keep the mouse in sync with rendering
+    this.render.mouse = mouse;
+
+    // setTimeout(() => {
+    //   Body.applyForce(composite.bodies[0], { x: composite.bodies[1].position.x - 20, y: composite.bodies[1].position.y }, Vector.create(0.3, -0.1));
+    // }, 2000)
+  }
+
+  addSnakes(n: number = 1) {
+    const snake = this.getRandomSnake();
+    World.add(this.engine.world, snake);
   }
 
   getRandomSnake(): Composite {
     const randomPos = this.getRandomPosition();
-    const snake = this.createSnakeBody(randomPos.x, randomPos.y, 10);
-    return snake;
+    return this.createSnakeBody(randomPos.x, randomPos.y, 10);
   }
 
   createSnakeBody(x: number, y: number, length: number): Composite {
-    const snakeOptions: IBodyDefinition = {
-      friction: 0.1,
-      frictionAir: 0.2,
-      density: 0.1,
-      label: String(GameObjectType.SNAKE),
-      collisionFilter: {
-        group: Body.nextGroup(true),
-      },
-    }
-    const head = Bodies.circle(x, y, SNAKE_HEAD_SIZE, { ...snakeOptions });
-
-    const tail = [];
-    const constraints = [];
-    for (let i = 1; i <= length; i++) {
-      const tailPiece = Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
-        ...snakeOptions,
-        label: String(GameObjectType.SNAKE_TAIL),
-        density: 0.01,
-        frictionAir: 0.4,
-      });
-      const constraint = Constraint.create({
-        bodyA: (i === 1) ? head : tail[i - 2],
-        bodyB: tailPiece,
-        stiffness: 0.99,
-        damping: 0.1,
-        length: 1.4 * SNAKE_HEAD_SIZE,
-        render: {
-          visible: true,
-          lineWidth: 1,
-          strokeStyle: 'red',
-        },
-      });
-      tail.push(tailPiece);
-      constraints.push(constraint);
-    }
-    const snakeComposite = Composite.create({
-      bodies: [head, ...tail],
-      constraints: constraints,
-    });
-
     const group = Body.nextGroup(true);
+    const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
+      return Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
+        chamfer: 5,
+        frictionAir: 0.01,
+        collisionFilter: { group },
+        label: GameObjectType.SNAKE_TAIL,
+      } as IBodyDefinition);
+    })
+    Composite.add(composite, Bodies.circle(x, y + length * 10, SNAKE_HEAD_SIZE, {
+      chamfer: 5,
+      collisionFilter: { group },
+      label: GameObjectType.SNAKE,
+    } as IBodyDefinition));
 
-    const rope = Composites.stack(475, 100, 10, 1, 10, 10, (x: number, y: number) => {
-      return Bodies.rectangle(x, y, 40, 20, { collisionFilter: { group: group } });
+    Composites.chain(composite, 0, 0.3, 0, -0.3, {
+      stiffness: 0,
+      length: 0,
+      damping: 0.1,
+      render: {
+        visible: false,
+      },
     });
-
-    // current task: trying to get the example chains to behave as in the demo bed
-    // https://brm.io/matter-js/demo/#chains
-    // https://github.com/liabru/matter-js/blob/master/examples/chains.js
-
-    // Composites.mesh(rope, 10, 2, true, {});
-    Composites.chain(rope, 0, 0.5, 0, -0.5, { stiffness: 0.8, length: 1 });
-    Composite.add(rope, Constraint.create({
-        bodyB: rope.bodies[0],
-        pointB: { x: -20, y: 0 },
-        pointA: { x: rope.bodies[0].position.x, y: rope.bodies[0].position.y },
-        stiffness: 0.5,
-    }));
 
     // get an existing snake color or add a random one
     let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
-    if (snakeColors.has(snakeComposite.id)) {
-      snakeColor = snakeColors.get(snakeComposite.id) as string;
+    if (snakeColors.has(composite.id)) {
+      snakeColor = snakeColors.get(composite.id) as string;
     } else {
-      snakeColors.set(snakeComposite.id, snakeColor);
+      snakeColors.set(composite.id, snakeColor);
     }
+    composite.bodies.forEach(body => body.render.fillStyle = snakeColor);
 
-    rope.bodies.forEach(body => body.render.fillStyle = snakeColor);
-    head.render.fillStyle = snakeColor;
-    tail.forEach(tailPiece => tailPiece.render.fillStyle = snakeColor);
-
-    return rope;
+    return composite;
   }
 
   getRandomPosition(): Vector {
