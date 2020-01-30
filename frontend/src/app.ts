@@ -14,7 +14,6 @@ export class App implements MessageListener {
   private lastMessage = 0;
   private physics: Physics;
   private generationProgress = 0;
-  private showInfo = true;
 
   constructor(
     private rootElement: HTMLElement,
@@ -102,7 +101,7 @@ export class App implements MessageListener {
 
     document.body.addEventListener('keypress', (evt) => {
       if (evt.key === 'i') {
-        this.showInfo = !this.showInfo;
+        this.debuggerElement.classList.toggle('hidden');
       }
     });
   }
@@ -135,9 +134,7 @@ export class App implements MessageListener {
       .map(snake => `<tr><td>${snake.id}</td><td>${Math.floor(snake.energyIntake)}</td><td>${Math.floor(snake.energyLevel)}</td></tr>`)
       .join('');
 
-    let newHtml = '';
-    if (this.showInfo) {
-      newHtml = `
+    this.debuggerElement.innerHTML = `
       <div class='generation-info'>
         <table>
           <tr>
@@ -161,7 +158,5 @@ export class App implements MessageListener {
         </table>
       </div>
       `;
-    }
-    this.debuggerElement.innerHTML = newHtml;
   }
 }

@@ -29,6 +29,10 @@ body, html {
   grid-template-columns: 1fr 1fr;
 }
 
+.debug.hidden {
+  display: none;
+}
+
 .snakes {
   overflow-y: scroll;
   justify-self: end;
