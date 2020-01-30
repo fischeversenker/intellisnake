@@ -1,4 +1,4 @@
-import { Body, Engine, Events, IEventCollision, World as MWorld } from "matter-js";
+import { Body, Engine, Events, IEventCollision, World as MWorld, IPair } from "matter-js";
 import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
@@ -101,7 +101,7 @@ export class World {
   }
 
   handleCollissions = (event: IEventCollision<Engine>) => {
-    const foodPairs = event.pairs.filter(pair => {
+    const foodPairs = event.pairs.filter((pair: IPair) => {
       if (pair.bodyA.label === String(GameObjectType.SNAKE_TAIL) || pair.bodyB.label === String(GameObjectType.SNAKE_TAIL)) {
         return false;
       }
@@ -110,7 +110,7 @@ export class World {
       return aIsSnakeBIsFood || bIsSnakeAIsFood;
     });
 
-    foodPairs.forEach(pair => {
+    foodPairs.forEach((pair: IPair) => {
       let snake: Snake, snakeBody: Body, food: Food, foodBody: Body;
 
       if (pair.bodyA.label === String(GameObjectType.FOOD)) {

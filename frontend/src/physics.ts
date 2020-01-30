@@ -113,19 +113,15 @@ export class Physics {
     // add mouse control
     const mouse = Mouse.create(this.render.canvas);
     const mouseConstraint = MouseConstraint.create(this.engine, {
-            mouse: mouse,
-            constraint: {
-                stiffness: 0.2,
-                render: {
-                    visible: false
-                }
-            }
-        } as IMouseConstraintDefinition);
-
+      mouse: mouse,
+      constraint: {
+        stiffness: 0.2,
+        render: {
+          visible: false
+        }
+      }
+    } as IMouseConstraintDefinition);
     World.add(this.engine.world, mouseConstraint);
-
-    // keep the mouse in sync with rendering
-    this.render.mouse = mouse;
 
     // setTimeout(() => {
     //   Body.applyForce(composite.bodies[0], { x: composite.bodies[1].position.x - 20, y: composite.bodies[1].position.y }, Vector.create(0.3, -0.1));
