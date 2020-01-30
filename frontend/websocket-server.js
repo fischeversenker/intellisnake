@@ -34,12 +34,12 @@ wss.on('connection', function connection(ws) {
       }));
     } else {
       const ids = data.data.snakeIds;
-      // const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] })).reduce((acc, pos) => ({...acc, ...pos}), {});
+      const resultData = ids.map(id => ({ [id]: [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] })).reduce((acc, pos) => ({...acc, ...pos}), {});
       // const resultData = ids.map(id => ({ [id]: [1, 1] })).reduce((acc, pos) => ({...acc, ...pos}), {});
       // use this for circular movement of all snakes
-      const x = Math.cos(Date.now() / 800);
-      const y = Math.sin(Date.now() / 800);
-      const resultData = ids.map(id => ({ [id]: [x, y] })).reduce((acc, pos) => ({...acc, ...pos}), {});
+      // const x = Math.cos(Date.now() / 800);
+      // const y = Math.sin(Date.now() / 800);
+      // const resultData = ids.map(id => ({ [id]: [x, y] })).reduce((acc, pos) => ({...acc, ...pos}), {});
       setTimeout(() => {
         ws.send(JSON.stringify({
           messageId: data.messageId,

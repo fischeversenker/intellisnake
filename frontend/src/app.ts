@@ -8,7 +8,6 @@ export const GENERATION_DURATION_MS = 30 * 1000;
 
 export class App implements MessageListener {
   private debuggerElement: HTMLElement;
-  private resetButton: HTMLElement;
   private websocket: Websocket;
   private world: World;
   private generationCount = 0;
@@ -24,14 +23,6 @@ export class App implements MessageListener {
     this.debuggerElement = document.createElement('div');
     this.debuggerElement.classList.add('debug');
     this.rootElement.appendChild(this.debuggerElement);
-
-    this.resetButton = document.createElement('button');
-    this.resetButton.classList.add('reset-button');
-    this.resetButton.innerHTML = 'RESET (WIP)';
-    this.resetButton.addEventListener('click', (evt) => {
-      // this.reset();
-    });
-    this.rootElement.appendChild(this.resetButton);
 
     const mainElement = document.querySelector('#main') as HTMLElement;
     this.physics = new Physics(mainElement, this.width, this.height);
@@ -96,7 +87,7 @@ export class App implements MessageListener {
     // add snakes
     for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
       const snakeComposite = this.physics.getRandomSnake();
-      MWorld.add(this.physics.engine.world, snakeComposite);
+      MWorld.add(this.physics.world, snakeComposite);
       const snake = new Snake(snakeComposite);
       this.world.addGameObject(snake);
     }
@@ -116,13 +107,11 @@ export class App implements MessageListener {
       snake.reset();
 
       const randPos = this.physics.getRandomPosition();
-      snake.body.bodies.forEach(body => {
-        Body.setPosition(body, randPos);
-      });
+      snake.setPosition(randPos);
 
-      const worldSnake = this.physics.engine.world.bodies.find(body => body.id === snake.body.id);
+      const worldSnake = Composite.allBodies(this.physics.world).find(body => snake.containsBody(body));
       if (!worldSnake) {
-        MWorld.add(this.physics.engine.world, snake.body);
+        MWorld.add(this.physics.world, snake.body);
       }
     });
     this.world.reset();

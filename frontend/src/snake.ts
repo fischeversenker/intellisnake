@@ -1,11 +1,14 @@
-import { Body, Constraint, Vector, Composite } from "matter-js";
+import { Body, Composite, Vector } from "matter-js";
 import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
 export const SNAKE_LENGTH = 50;
-export const SNAKE_ENERGY_LEVEL_INITIAL = 1000;
+export const SNAKE_ENERGY_LEVEL_INITIAL = 10000;
 
 export class Snake implements GameObject {
+
+  static SNAKE_HEAD_SIZE = 12;
+  static SNAKE_TAIL_SIZE = 9;
 
   type = GameObjectType.SNAKE;
 
@@ -19,24 +22,29 @@ export class Snake implements GameObject {
   constructor(
     composite: Composite,
   ) {
-    this.id = composite.id,
     this.body = composite;
-    this.head = composite.bodies[0];
+    this.head = composite.bodies[composite.bodies.length - 1];
+    this.id = this.head.id;
   }
 
   setVelocity(newVelocity: Vector): void {
-    // const force = Vector.mult(newVelocity, 0.02);
-    // const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
-    // Body.applyForce(this.head, oldPosition, force);
-    Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
+    const force = Vector.mult(newVelocity, 0.02);
+    const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
+    Body.applyForce(this.head, oldPosition, force);
   }
 
+  /**
+   * returns whether this snake contains a given body
+   * @param body Matter.Body
+   * @returns boolean
+   */
   containsBody(body: Body) {
     return this.body.id === body.id || this.head.id === body.id;
   }
 
-  setPosition(position: Vector) {
-    Body.setPosition(this.head, position)
+  setPosition(destination: Vector) {
+    const distance = Vector.sub(destination, this.head.position);
+    Composite.translate(this.body, distance);
   }
 
   update(): void {

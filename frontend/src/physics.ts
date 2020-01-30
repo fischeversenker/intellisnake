@@ -1,4 +1,5 @@
-import Matter, { Bodies, Body, Constraint, Engine, IBodyDefinition, Render, Runner, World, Vector, Composite } from 'matter-js';
+import Matter, { Bodies, Body, Composite, Composites, Engine, IBodyDefinition, IMouseConstraintDefinition, Mouse, MouseConstraint, Render, Runner, Vector, World } from 'matter-js';
+import { Snake } from './snake';
 import { GameObjectType } from './utils';
 
 export const STARTING_BODY_ID = 666;
@@ -6,10 +7,6 @@ export const STARTING_BODY_ID = 666;
 const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
-const ME_COLOR = 'white';
-
-const SNAKE_HEAD_SIZE = 8;
-const SNAKE_TAIL_SIZE = 6;
 const FOOD_SIZE = 24;
 const FOOD_COLOR = 'rgb(234, 123, 198)';
 
@@ -18,6 +15,7 @@ const snakeColors: Map<number, string> = new Map();
 export class Physics {
 
   public engine: Engine;
+  public world: World;
   private runner: Runner | null = null;
   private render: Render;
   private tempRender: Render;
@@ -39,7 +37,8 @@ export class Physics {
   ) {
     // create an engine
     this.engine = Engine.create();
-    this.engine.world.gravity = { x: 0, y: 0, scale: 0 };
+    this.world = this.engine.world;
+    this.world.gravity = { x: 0, y: 0, scale: 0 };
 
     // create a renderer
     this.render = Render.create({
@@ -95,7 +94,7 @@ export class Physics {
       { render: { visible: false }, isStatic: true, label: 'boundary' },
     );
 
-    World.add(this.engine.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);
+    World.add(this.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);
 
     // make sure all our bodies start at this given id to not conflict with any other ids
     // absolutely not necessary because of matter-js.
@@ -106,68 +105,61 @@ export class Physics {
     // on the world before you even start working on it. The starting id was always 5 for me.
     // to overcome this we start with an arbitrary (but higher than 5) number as our starting id.
     this.matterCommon._nextId = STARTING_BODY_ID;
+
+    // add mouse control
+    const mouse = Mouse.create(this.render.canvas);
+    const mouseConstraint = MouseConstraint.create(this.engine, {
+      mouse: mouse,
+      constraint: {
+        stiffness: 0.2,
+        render: {
+          visible: false
+        }
+      }
+    } as IMouseConstraintDefinition);
+    World.add(this.world, mouseConstraint);
   }
 
   getRandomSnake(): Composite {
     const randomPos = this.getRandomPosition();
-    const snake = this.createSnakeBody(randomPos.x, randomPos.y, 10);
-    return snake;
+    return this.createSnakeBody(randomPos.x, randomPos.y, 10);
   }
 
   createSnakeBody(x: number, y: number, length: number): Composite {
-    const snakeOptions: IBodyDefinition = {
-      friction: 0.1,
-      frictionAir: 0.1,
-      density: 1,
-      mass: 0.5,
-      label: String(GameObjectType.SNAKE),
-      collisionFilter: {
-        group: Body.nextGroup(true),
-      },
-    }
-    const head = Bodies.circle(x, y, SNAKE_HEAD_SIZE, { ...snakeOptions });
+    const group = Body.nextGroup(true);
+    const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
+      return Bodies.circle(x, y, Snake.SNAKE_TAIL_SIZE, {
+        chamfer: 5,
+        frictionAir: 0.1,
+        collisionFilter: { group },
+        label: GameObjectType.SNAKE_TAIL,
+      } as IBodyDefinition);
+    })
+    Composite.add(composite, Bodies.circle(x, y + length * 10, Snake.SNAKE_HEAD_SIZE, {
+      chamfer: 5,
+      collisionFilter: { group },
+      label: GameObjectType.SNAKE,
+    } as IBodyDefinition));
 
-    const tail = [];
-    const constraints = [];
-    for (let i = 1; i <= length; i++) {
-      const tailPiece = Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
-        ...snakeOptions,
-        label: String(GameObjectType.SNAKE_TAIL),
-        mass: 0.1,
-        frictionAir: 0.4,
-      });
-      const constraint = Constraint.create({
-        bodyA: (i === 1) ? head : tail[i - 2],
-        bodyB: tailPiece,
-        stiffness: 0.99,
-        damping: 0.1,
-        length: 1.4 * SNAKE_HEAD_SIZE,
-        render: {
-          visible: false,
-          lineWidth: 0,
-          strokeStyle: 'line',
-        },
-      });
-      tail.push(tailPiece);
-      constraints.push(constraint);
-    }
-    const snakeComposite = Composite.create({
-      bodies: [head, ...tail],
-      constraints: constraints,
+    Composites.chain(composite, 0, 0.3, 0, -0.3, {
+      stiffness: 0,
+      length: 0,
+      damping: 0.6,
+      render: {
+        visible: false,
+      },
     });
 
     // get an existing snake color or add a random one
     let snakeColor = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
-    if (snakeColors.has(snakeComposite.id)) {
-      snakeColor = snakeColors.get(snakeComposite.id) as string;
+    if (snakeColors.has(composite.id)) {
+      snakeColor = snakeColors.get(composite.id) as string;
     } else {
-      snakeColors.set(snakeComposite.id, snakeColor);
+      snakeColors.set(composite.id, snakeColor);
     }
+    composite.bodies.forEach(body => body.render.fillStyle = snakeColor);
 
-    head.render.fillStyle = snakeColor;
-    tail.forEach(tailPiece => tailPiece.render.fillStyle = snakeColor);
-
-    return snakeComposite;
+    return composite;
   }
 
   getRandomPosition(): Vector {
@@ -204,7 +196,7 @@ export class Physics {
   }
 
   get snakesOnWorld(): Body[] {
-    return this.engine.world.bodies.filter(body => body.label === String(GameObjectType.SNAKE));
+    return this.world.bodies.filter(body => body.label === String(GameObjectType.SNAKE));
   }
 
   stop() {
@@ -217,7 +209,7 @@ export class Physics {
 
   destroy() {
     console.log('[PHYSICS]: destroy()');
-    World.clear(this.engine.world, true);
+    World.clear(this.world, true);
     this.matterCommon._nextId = STARTING_BODY_ID;
   }
 

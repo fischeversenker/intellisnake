@@ -1,11 +1,11 @@
 import { Body, Composite, Vector } from "matter-js";
 
 export enum GameObjectType {
-  'NONE' = 0,
-  'FOOD' = 1,
-  'SNAKE' = 2,
-  'SNAKE_TAIL' = 3,
-  'ME' = 4,
+  'NONE' = 'none',
+  'FOOD' = 'food',
+  'SNAKE' = 'snake',
+  'SNAKE_TAIL' = 'snake_tail',
+  'ME' = 'me',
 };
 
 export interface GameObject {
