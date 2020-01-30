@@ -27,7 +27,7 @@ export class World {
   ) {
     console.log('[WORLD]: building new world...');
     Events.on(this.physics.engine, 'beforeUpdate', this.update);
-    // Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
+    Events.on(this.physics.engine, 'collisionStart', this.handleCollissions);
 
     this.websocket = Websocket.getInstance();
     console.log('[WORLD]: ... ready');
