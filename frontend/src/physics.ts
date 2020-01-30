@@ -1,4 +1,5 @@
-import Matter, { Bodies, Body, Composite, Composites, Constraint, Engine, IBodyDefinition, Render, Runner, Vector, World, IChamfer, Mouse, MouseConstraint, IMouseConstraintDefinition } from 'matter-js';
+import Matter, { Bodies, Body, Composite, Composites, Engine, IBodyDefinition, IMouseConstraintDefinition, Mouse, MouseConstraint, Render, Runner, Vector, World } from 'matter-js';
+import { Snake } from './snake';
 import { GameObjectType } from './utils';
 
 export const STARTING_BODY_ID = 666;
@@ -6,9 +7,6 @@ export const STARTING_BODY_ID = 666;
 const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
-
-const SNAKE_HEAD_SIZE = 16;
-const SNAKE_TAIL_SIZE = 12;
 const FOOD_SIZE = 24;
 const FOOD_COLOR = 'rgb(234, 123, 198)';
 
@@ -130,14 +128,14 @@ export class Physics {
   createSnakeBody(x: number, y: number, length: number): Composite {
     const group = Body.nextGroup(true);
     const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
-      return Bodies.circle(x, y, SNAKE_TAIL_SIZE, {
+      return Bodies.circle(x, y, Snake.SNAKE_TAIL_SIZE, {
         chamfer: 5,
         frictionAir: 0.1,
         collisionFilter: { group },
         label: GameObjectType.SNAKE_TAIL,
       } as IBodyDefinition);
     })
-    Composite.add(composite, Bodies.circle(x, y + length * 10, SNAKE_HEAD_SIZE, {
+    Composite.add(composite, Bodies.circle(x, y + length * 10, Snake.SNAKE_HEAD_SIZE, {
       chamfer: 5,
       collisionFilter: { group },
       label: GameObjectType.SNAKE,

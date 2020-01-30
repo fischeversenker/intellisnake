@@ -1,4 +1,4 @@
-import { Body, Engine, Events, IEventCollision, World as MWorld, IPair } from "matter-js";
+import { Body, Engine, Events, IEventCollision, IPair, World as MWorld } from "matter-js";
 import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
@@ -6,7 +6,7 @@ import { GameObject, GameObjectType } from "./utils";
 import { MessageId, MessageType, Websocket } from "./websocket";
 
 const AI_CALL_FREQUENCY = 10;
-export const GENERATION_SNAKE_COUNT = 4;
+export const GENERATION_SNAKE_COUNT = 20;
 
 let worldCount = 0;
 

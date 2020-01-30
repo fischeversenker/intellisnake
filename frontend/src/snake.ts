@@ -1,4 +1,4 @@
-import { Body, Constraint, Vector, Composite } from "matter-js";
+import { Body, Composite, Vector } from "matter-js";
 import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
@@ -6,6 +6,9 @@ export const SNAKE_LENGTH = 50;
 export const SNAKE_ENERGY_LEVEL_INITIAL = 10000;
 
 export class Snake implements GameObject {
+
+  static SNAKE_HEAD_SIZE = 12;
+  static SNAKE_TAIL_SIZE = 9;
 
   type = GameObjectType.SNAKE;
 
@@ -25,7 +28,7 @@ export class Snake implements GameObject {
   }
 
   setVelocity(newVelocity: Vector): void {
-    const force = Vector.mult(newVelocity, 0.03);
+    const force = Vector.mult(newVelocity, 0.02);
     const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
     Body.applyForce(this.head, oldPosition, force);
   }
