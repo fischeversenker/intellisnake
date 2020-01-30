@@ -8,6 +8,7 @@ from sklearn.preprocessing import QuantileTransformer
 from PIL import Image
 from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Flatten, BatchNormalization
 from keras.models import Model
+from keras.initializers import Constant
 import time
 import math
 # Evolution works as a Black Box Optimization and is based on paper https://arxiv.org/pdf/1703.03864.pdf
@@ -15,7 +16,7 @@ import math
 class AI():
     def __init__(self):
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.00001 
+        self.alpha = 0.1 
         self.shape = 32 #input size of NN
         self.N = None # dict to store n noiseMatrix
         self.W_try = None # dict to store weights
@@ -25,8 +26,8 @@ class AI():
         self.frameCount = 0
         self.FramesPerEpoch = 300
         self.population = None
-        self.entityCentricScaling = 0.5
-        self.nonTrainableLayers = [0,2,4,5]
+        self.entityCentricScaling = 0.8
+        self.nonTrainableLayers = [0,2,5,7]
 
     def startModel(self,dict_):
         self.IDs = dict_
@@ -36,6 +37,7 @@ class AI():
         if self.population == None:
             self.population = list_
         if self.N == None:
+             print("New Population: {}".format(len(list_)))
              self.createNoiseMatrix()
         if self.W_try == None:
              self.applyNoise()
@@ -46,20 +48,25 @@ class AI():
 
     def updateModel(self,dict_):
         self.evoleModel(dict_)
-        self.population = None
+        #self.population = None
         self.W_try = None
         self.N = None
         self.frameCount = 0
 
     def buildModel(self):
         input_ = Input(shape=(self.shape,self.shape,3)) #0
-        encoder = Conv2D(16, kernel_size=(8, 8), strides = (4,4), padding='same', activation ='selu', kernel_initializer='lecun_normal', bias_initializer='zeros' )(input_) #1
+        encoder = Conv2D(16, kernel_size=(3, 3), strides = (2,2), padding='same', activation ='selu', kernel_initializer='he_uniform', bias_initializer= Constant(0.1) )(input_) #1
         encoder = MaxPooling2D((2, 2))(encoder) #2
-        encoder = Conv2D(32, kernel_size=(4, 4),strides =(2,2), padding='same',activation ='selu', kernel_initializer='lecun_normal', bias_initializer='zeros')(encoder) #3
-        encoder = MaxPooling2D((2, 2))(encoder) #4
-        x = Flatten()(encoder) #5
-        x = Dense(units= 32, activation = 'tanh', kernel_initializer='glorot_uniform', bias_initializer='zeros')(x) #6
-        output = Dense(units = 2, activation='tanh', kernel_initializer='glorot_uniform', bias_initializer='zeros')(x) #7 
+        encoder = BatchNormalization()(encoder) #3
+        encoder = Conv2D(32, kernel_size=(3, 3),strides =(2,2), padding='same',activation ='selu', kernel_initializer='he_uniform', bias_initializer= Constant(0.1))(encoder) #3
+        encoder = MaxPooling2D((2, 2))(encoder) #5
+        encoder = BatchNormalization()(encoder)#6
+        x = Flatten()(encoder) #7
+        x = Dense(units= 128, activation = 'selu', kernel_initializer='he_uniform', bias_initializer= Constant(0.1))(x) #6
+        
+        x = Dense(units= 16, activation = 'selu', kernel_initializer='he_uniform', bias_initializer= Constant(0.1))(x) #7
+        x = BatchNormalization()(x)
+        output = Dense(units = 2, activation='tanh', kernel_initializer='glorot_uniform', bias_initializer='zeros')(x) #8 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
 
@@ -85,15 +92,21 @@ class AI():
         return dict(zip(keys,A))
 
     def makePrediction(self,input,element):
+        
         self.model.set_weights(self.W_try[element])
         pred = self.model.predict(input)
+        #pred_ = self.decodePrediction(pred)
         pred_ = [float(pred[0][0]), float(pred[0][1])]
+        if pred_[0] == np.nan or pred_[1] == np.nan:
+            print("ALERT NAN")
+            pred_ = [0.0,0.0]
+
         return pred_
 
     def weighting(self,A,N):
         for element in list(A.keys()):
             w_weighted = N[element]
-            loss = np.array(A[element], dtype = np.float32)
+            loss = np.array(A[element], dtype = np.float64)
             for i in range(len(w_weighted)):
                 if i not in self.nonTrainableLayers:
                     for j in range(len(w_weighted[i])):
@@ -107,7 +120,7 @@ class AI():
         for i in range(len(w_add)):
             if i not in self.nonTrainableLayers:
                 for j in range(len(w[i])):
-                    w_add[i][j] = np.zeros(w_add[i][j].shape, dtype = np.float32)
+                    w_add[i][j] = np.zeros(w_add[i][j].shape, dtype = np.float64)
                     for element in list(N.keys()):
                         w_add[i][j] = N[element][i][j] + w_add[i][j]
                     w_add[i][j] = np.reshape(scalingFactor*w_add[i][j], w_add[i][j].shape)   
