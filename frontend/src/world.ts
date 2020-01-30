@@ -45,7 +45,7 @@ export class World {
 
   reset() {
     this.nonSnakes.forEach(nonSnake => {
-      MWorld.remove(this.physics.engine.world, nonSnake.body);
+      MWorld.remove(this.physics.world, nonSnake.body);
     });
     this.gameObjects = this.gameObjects.filter(gameObject => gameObject.type === GameObjectType.SNAKE);
     this.pendingWebSocketRequests = [];
@@ -71,7 +71,7 @@ export class World {
       const x = this.sampleNormalDistribution() * this.width;
       const y = this.sampleNormalDistribution() * this.height;
       const foodBody = this.physics.getFood(x, y);
-      MWorld.add(this.physics.engine.world, foodBody);
+      MWorld.add(this.physics.world, foodBody);
       const food = new Food(foodBody.id, foodBody, 500);
       this.gameObjects.push(food);
     }
@@ -81,7 +81,7 @@ export class World {
         gameObject.update();
       }
       if (gameObject.dead) {
-        MWorld.remove(this.physics.engine.world, gameObject.body);
+        MWorld.remove(this.physics.world, gameObject.body);
       }
     });
     this.gameObjects = [
@@ -91,10 +91,10 @@ export class World {
 
     // send "snakes" message?
     if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
-      // this.sendWebSocketMessage(MessageType.DATA, {
-      //   matrix: this.toBitMatrix(),
-      //   snakeIds: this.snakeIds,
-      // });
+      this.sendWebSocketMessage(MessageType.DATA, {
+        matrix: this.toBitMatrix(),
+        snakeIds: this.snakeIds,
+      });
     }
 
     this.tickCount++;
@@ -127,7 +127,7 @@ export class World {
       if (snake && food) {
         snake.eat(food);
       }
-      MWorld.remove(this.physics.engine.world, foodBody);
+      MWorld.remove(this.physics.world, foodBody);
     });
   }
 

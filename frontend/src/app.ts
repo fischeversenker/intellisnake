@@ -8,13 +8,13 @@ export const GENERATION_DURATION_MS = 30 * 1000;
 
 export class App implements MessageListener {
   private debuggerElement: HTMLElement;
-  private resetButton: HTMLElement;
   private websocket: Websocket;
   private world: World;
   private generationCount = 0;
   private lastMessage = 0;
   private physics: Physics;
   private generationProgress = 0;
+  private ranOnce = false;
 
   constructor(
     private rootElement: HTMLElement,
@@ -24,14 +24,6 @@ export class App implements MessageListener {
     this.debuggerElement = document.createElement('div');
     this.debuggerElement.classList.add('debug');
     this.rootElement.appendChild(this.debuggerElement);
-
-    this.resetButton = document.createElement('button');
-    this.resetButton.classList.add('reset-button');
-    this.resetButton.innerHTML = 'RESET (WIP)';
-    this.resetButton.addEventListener('click', (evt) => {
-      // this.reset();
-    });
-    this.rootElement.appendChild(this.resetButton);
 
     const mainElement = document.querySelector('#main') as HTMLElement;
     this.physics = new Physics(mainElement, this.width, this.height);
@@ -81,9 +73,9 @@ export class App implements MessageListener {
         for (let destination in message.data.prediction) {
           let snake = this.world.snakes.find(gO => Number(gO.id) === Number(destination));
           if (snake) {
-            // const x = message.data.prediction[snake.id][0];
-            // const y = message.data.prediction[snake.id][1];
-            // snake.setVelocity(Vector.create(x, y));
+            const x = message.data.prediction[snake.id][0];
+            const y = message.data.prediction[snake.id][1];
+            snake.setVelocity(Vector.create(x, y));
           }
         }
         break;
@@ -94,13 +86,11 @@ export class App implements MessageListener {
 
   init() {
     // add snakes
-    // this.physics.addSnakes(1);
     for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
       const snakeComposite = this.physics.getRandomSnake();
-      MWorld.add(this.physics.engine.world, snakeComposite);
+      MWorld.add(this.physics.world, snakeComposite);
       const snake = new Snake(snakeComposite);
-      // this is the culprite. Without this the snake does not jiggle like craaaazy! :)
-      // this.world.addGameObject(snake);
+      this.world.addGameObject(snake);
     }
 
     const snakesData = this.world.snakes.map(snake => ({
@@ -117,17 +107,16 @@ export class App implements MessageListener {
     this.world.snakes.forEach(snake => {
       snake.reset();
 
-      // const randPos = this.physics.getRandomPosition();
-      // snake.body.bodies.forEach(body => {
-      //   Body.setPosition(body, randPos);
-      // });
+      const randPos = this.physics.getRandomPosition();
+      snake.setPosition(randPos);
 
-      const worldSnake = this.physics.engine.world.bodies.find(body => body.id === snake.body.id);
-      if (!worldSnake) {
-        MWorld.add(this.physics.engine.world, snake.body);
+      const worldSnake = Composite.allBodies(this.physics.world).find(body => snake.containsBody(body));
+      if (!worldSnake && this.ranOnce) {
+        MWorld.add(this.physics.world, snake.body);
       }
     });
     this.world.reset();
+    this.ranOnce = true;
   }
 
   start() {

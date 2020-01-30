@@ -6,7 +6,6 @@ export const STARTING_BODY_ID = 666;
 const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 40;
-const ME_COLOR = 'white';
 
 const SNAKE_HEAD_SIZE = 20;
 const SNAKE_TAIL_SIZE = 16;
@@ -18,6 +17,7 @@ const snakeColors: Map<number, string> = new Map();
 export class Physics {
 
   public engine: Engine;
+  public world: World;
   private runner: Runner | null = null;
   private render: Render;
   private tempRender: Render;
@@ -39,7 +39,8 @@ export class Physics {
   ) {
     // create an engine
     this.engine = Engine.create();
-    this.engine.world.gravity = { x: 0, y: 0, scale: 0 };
+    this.world = this.engine.world;
+    this.world.gravity = { x: 0, y: 0, scale: 0 };
 
     // create a renderer
     this.render = Render.create({
@@ -95,7 +96,7 @@ export class Physics {
       { render: { visible: false }, isStatic: true, label: 'boundary' },
     );
 
-    World.add(this.engine.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);
+    World.add(this.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);
 
     // make sure all our bodies start at this given id to not conflict with any other ids
     // absolutely not necessary because of matter-js.
@@ -106,9 +107,6 @@ export class Physics {
     // on the world before you even start working on it. The starting id was always 5 for me.
     // to overcome this we start with an arbitrary (but higher than 5) number as our starting id.
     this.matterCommon._nextId = STARTING_BODY_ID;
-
-    // const composite = this.getRandomSnake();
-    // World.add(this.engine.world, composite);
 
     // add mouse control
     const mouse = Mouse.create(this.render.canvas);
@@ -121,16 +119,7 @@ export class Physics {
         }
       }
     } as IMouseConstraintDefinition);
-    World.add(this.engine.world, mouseConstraint);
-
-    // setTimeout(() => {
-    //   Body.applyForce(composite.bodies[0], { x: composite.bodies[1].position.x - 20, y: composite.bodies[1].position.y }, Vector.create(0.3, -0.1));
-    // }, 2000)
-  }
-
-  addSnakes(n: number = 1) {
-    const snake = this.getRandomSnake();
-    World.add(this.engine.world, snake);
+    World.add(this.world, mouseConstraint);
   }
 
   getRandomSnake(): Composite {
@@ -209,7 +198,7 @@ export class Physics {
   }
 
   get snakesOnWorld(): Body[] {
-    return this.engine.world.bodies.filter(body => body.label === String(GameObjectType.SNAKE));
+    return this.world.bodies.filter(body => body.label === String(GameObjectType.SNAKE));
   }
 
   stop() {
@@ -222,7 +211,7 @@ export class Physics {
 
   destroy() {
     console.log('[PHYSICS]: destroy()');
-    World.clear(this.engine.world, true);
+    World.clear(this.world, true);
     this.matterCommon._nextId = STARTING_BODY_ID;
   }
 

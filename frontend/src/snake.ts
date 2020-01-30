@@ -19,25 +19,29 @@ export class Snake implements GameObject {
   constructor(
     composite: Composite,
   ) {
-    this.id = composite.id,
     this.body = composite;
-    this.head = composite.bodies[0];
+    this.head = composite.bodies[composite.bodies.length - 1];
+    this.id = this.head.id;
   }
 
   setVelocity(newVelocity: Vector): void {
     const force = Vector.mult(newVelocity, 0.02);
     const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
     Body.applyForce(this.head, oldPosition, force);
-
-    // Body.setVelocity(this.head, Vector.mult(newVelocity, 6));
   }
 
+  /**
+   * returns whether this snake contains a given body
+   * @param body Matter.Body
+   * @returns boolean
+   */
   containsBody(body: Body) {
     return this.body.id === body.id || this.head.id === body.id;
   }
 
-  setPosition(position: Vector) {
-    // Body.setPosition(this.head, position)
+  setPosition(destination: Vector) {
+    const distance = Vector.sub(destination, this.head.position);
+    Composite.translate(this.body, distance);
   }
 
   update(): void {
