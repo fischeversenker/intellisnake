@@ -6,7 +6,7 @@ export const STARTING_BODY_ID = 666;
 
 const TEMP_RENDER_WIDTH = 100;
 const TEMP_RENDER_HEIGHT = 100;
-const BOUNDARY_WIDTH = 40;
+const BOUNDARY_WIDTH = 80;
 const FOOD_SIZE = 24;
 const FOOD_COLOR = 'rgb(234, 123, 198)';
 
@@ -68,14 +68,14 @@ export class Physics {
     this.bottomBoundary = Bodies.rectangle(
       this.width / 2,
       this.height + BOUNDARY_WIDTH / 2,
-      this.width,
+      this.width * 1.1,
       BOUNDARY_WIDTH,
       { render: { visible: false }, isStatic: true, label: 'boundary' },
     );
     this.topBoundary = Bodies.rectangle(
       this.width / 2,
       0 - BOUNDARY_WIDTH / 2,
-      this.width,
+      this.width * 1.1,
       BOUNDARY_WIDTH,
       { render: { visible: false }, isStatic: true, label: 'boundary' },
     );
@@ -83,14 +83,14 @@ export class Physics {
       this.width + BOUNDARY_WIDTH / 2,
       this.height / 2,
       BOUNDARY_WIDTH,
-      this.height,
+      this.height * 1.1,
       { render: { visible: false }, isStatic: true, label: 'boundary' },
     );
     this.leftBoundary = Bodies.rectangle(
       0 - BOUNDARY_WIDTH / 2,
       this.height / 2,
       BOUNDARY_WIDTH,
-      this.height,
+      this.height * 1.1,
       { render: { visible: false }, isStatic: true, label: 'boundary' },
     );
 

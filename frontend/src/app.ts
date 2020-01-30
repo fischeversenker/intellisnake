@@ -14,6 +14,7 @@ export class App implements MessageListener {
   private lastMessage = 0;
   private physics: Physics;
   private generationProgress = 0;
+  private showInfo = true;
 
   constructor(
     private rootElement: HTMLElement,
@@ -98,6 +99,12 @@ export class App implements MessageListener {
     }));
 
     this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
+
+    document.body.addEventListener('keypress', (evt) => {
+      if (evt.key === 'i') {
+        this.showInfo = !this.showInfo;
+      }
+    });
   }
 
   reset() {
@@ -127,25 +134,34 @@ export class App implements MessageListener {
       .sort((a, b) => b.energyLevel - a.energyLevel)
       .map(snake => `<tr><td>${snake.id}</td><td>${Math.floor(snake.energyIntake)}</td><td>${Math.floor(snake.energyLevel)}</td></tr>`)
       .join('');
-    this.debuggerElement.innerHTML = `
-    <div class='generation-info'>
-      <table>
-        <tr>
-          <th>Generation:</td><td>${this.generationCount}</td>
-        </tr>
-        <tr>
-          <th>Progress:</td><td><progress value="${this.generationProgress}" max="1"></progress></td>
-        </tr>
-      </table>
-    </div>
-    <div class='snakes'>
-      <table>
-        <tr>
-          <th>ID</th><th>EI</th><th>EL</th>
-        </tr>
-        ${snakeRows}
-      </table>
-    </div>
-    `;
+
+    let newHtml = '';
+    if (this.showInfo) {
+      newHtml = `
+      <div class='generation-info'>
+        <table>
+          <tr>
+            <th>Generation:</td><td>${this.generationCount}</td>
+          </tr>
+          <tr>
+            <th>Alive snakes:</td><td>${this.world.aliveSnakes.length}</td>
+          </tr>
+          <tr>
+            <th>Progress:</td><td><progress value="${this.generationProgress}" max="1"></progress></td>
+          </tr>
+        </table>
+        <small>(you can toggle this overlay by pressing the i key)</small>
+      </div>
+      <div class='snakes'>
+        <table>
+          <tr>
+            <th>ID</th><th>EI</th><th>EL</th>
+          </tr>
+          ${snakeRows}
+        </table>
+      </div>
+      `;
+    }
+    this.debuggerElement.innerHTML = newHtml;
   }
 }
