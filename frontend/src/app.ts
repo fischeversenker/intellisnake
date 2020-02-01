@@ -154,7 +154,7 @@ export class App implements MessageListener {
   private drawDebugInfo() {
     const snakeRows = this.world.aliveSnakes
       .sort((a, b) => b.energyLevel - a.energyLevel)
-      .map(snake => `<tr><td style='background-color: rgb(${snake.getColor().join(',')})'>${snake.id}</td><td>${Math.floor(snake.energyIntake)}</td><td>${Math.floor(snake.energyLevel)}</td></tr>`)
+      .map(snake => `<tr><td style='background-color: rgb(${snake.getColor().join(',')})'></td><td>${Math.floor(snake.energyIntake)}</td><td>${Math.floor(snake.energyLevel)}</td></tr>`)
       .join('');
 
     this.debuggerElement.innerHTML = `
