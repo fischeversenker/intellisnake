@@ -78,8 +78,9 @@ class WebSocketServer:
                     print("starting new generation...")
                 if self.nes.printFrameCount() == 1 or len(snakeIds) == 0:
                     await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation})
-                elif DEBUG_MODE:
+                if DEBUG_MODE:
                     print("predicting...")
+                elif:
                     output_json = self.nes.runModel(matrix,snakeIds)
                     await self.sendMessage(websocket, messageId, "data", output_json)
                 
