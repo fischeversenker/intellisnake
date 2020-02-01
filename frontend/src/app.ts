@@ -100,7 +100,7 @@ export class App implements MessageListener {
     document.body.addEventListener('keypress', (evt) => {
       if (evt.key === 'i') {
         this.debuggerElement.classList.toggle('hidden');
-        this.controlsElement.classList.toggle('transparent');
+        this.controlsElement.classList.toggle('hidden');
       }
     });
 
