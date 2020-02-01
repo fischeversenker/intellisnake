@@ -43,7 +43,7 @@ class AI():
         file_ = self.getLastFile()
         self.model.load_weights('{}{}'.format(self.FilePathModels,file_))
         generation = file_.split(".")[0]
-        return generation
+        return int(generation)
 
     def runModel(self,matrix,list_):
         if self.population == None:
