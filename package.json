@@ -4,6 +4,7 @@
   "description": "TypeScript project. No 3rd party deps except during development (nodemon, etc), see frontend/package.json.",
   "scripts": {
     "start:frontend": "cd frontend && npm run dev",
+    "start:frontend:mock": "cd frontend && npm run dev:mock",
     "start:backend": "cd backend && python websocket-server.py"
   },
   "repository": {
