@@ -52,7 +52,7 @@ class WebSocketServer:
             self.started = True
             self.generation = 0
 
-        if messageType == "resume":
+        elif messageType == "resume":
             data = self.processMessageTypeStart(messageData)
             if DEBUG_MODE:
                 print("load data")
