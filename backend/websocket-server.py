@@ -53,6 +53,7 @@ class WebSocketServer:
             self.generation = 0
 
         if messageType == "resume":
+            data = self.processMessageTypeStart(messageData)
             if DEBUG_MODE:
                 print("load data")
             self.generation =self.nes.loadModel(data)
