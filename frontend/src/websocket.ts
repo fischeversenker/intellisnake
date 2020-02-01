@@ -52,8 +52,8 @@ export class Websocket {
   send(data: Message): MessageId {
     if (this.nativeWebsocket.readyState === WebSocket.OPEN) {
       this.nativeWebsocket.send(JSON.stringify({
-        ...data,
         messageId: this.messageCount,
+        ...data,
       }));
     }
 
