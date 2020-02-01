@@ -48,9 +48,9 @@ class WebSocketServer:
             if DEBUG_MODE:
                 print("starting...")
             self.nes.startModel(data)
-            await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
             self.started = True
             self.generation = 0
+            await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
 
         elif messageType == "resume":
             data = self.processMessageTypeStart(messageData)
