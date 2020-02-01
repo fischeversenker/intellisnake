@@ -23,7 +23,7 @@ export class Snake implements GameObject {
   }
 
   setVelocity(newVelocity: Vector): void {
-    const force = Vector.mult(newVelocity, 0.02);
+    const force = Vector.mult(newVelocity, 0.0005);
     const oldPosition = Vector.add(this.head.position, Vector.rotate(newVelocity, 180));
     Body.applyForce(this.head, oldPosition, force);
   }

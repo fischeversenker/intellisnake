@@ -4,6 +4,7 @@ import { Snake } from './snake';
 import { GameObjectType } from './utils';
 
 const BOUNDARY_WIDTH = 80;
+const SNAKE_GROUP = Body.nextGroup(true);
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -121,18 +122,17 @@ export class Physics {
   }
 
   createSnakeBody(x: number, y: number, length: number): Composite {
-    const group = Body.nextGroup(true);
     const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
       return Bodies.circle(x, y, Config.SNAKE_TAIL_SIZE, {
         chamfer: 5,
         frictionAir: 0.1,
-        collisionFilter: { group },
+        collisionFilter: { group: SNAKE_GROUP },
         label: GameObjectType.SNAKE_TAIL,
       } as IBodyDefinition);
     })
     Composite.add(composite, Bodies.circle(x, y + length * 10, Config.SNAKE_HEAD_SIZE, {
       chamfer: 5,
-      collisionFilter: { group },
+      collisionFilter: { group: SNAKE_GROUP },
       label: GameObjectType.SNAKE,
     } as IBodyDefinition));
 
