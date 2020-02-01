@@ -113,7 +113,6 @@ export class App implements MessageListener {
         color: snake.getColor(),
       }));
       this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
-      this.start();
     });
 
     const resumeButtonElement = document.createElement('button');
@@ -127,7 +126,6 @@ export class App implements MessageListener {
       }));
 
       this.websocket.send({ type: MessageType.RESUME, data: { snakes: snakesData } });
-      this.start();
     });
   }
 
