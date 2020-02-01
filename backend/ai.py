@@ -1,4 +1,5 @@
 import os
+import glob
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import numpy as np
 import csv
@@ -7,7 +8,7 @@ import pandas as pd
 from sklearn.preprocessing import QuantileTransformer
 from PIL import Image
 from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Flatten, BatchNormalization
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.initializers import Constant
 from keras.constraints import MinMaxNorm
 import time
@@ -35,6 +36,12 @@ class AI():
     def startModel(self,dict_):
         self.IDs = dict_
         self.buildModel()
+
+    def loadModel(self):
+        self.IDs = dict_
+        self.buildModel()
+        file_ = self.getLastFile()
+        self.model.load_weights('{}{}'.format(self.FilePathModels,file))
 
     def runModel(self,matrix,list_):
         if self.population == None:
@@ -85,7 +92,7 @@ class AI():
 
     def evoleModel(self,dict_):
         A = self.getReward(dict_)
-        B = self.diversityReward(self.predictions)
+       # B = self.diversityReward(self.predictions)
      #   C = self.sumRewards(A, B)
         if sum(list(A.values())) == 0:
             pass
@@ -215,6 +222,13 @@ class AI():
 
     def printFrameCount(self):
         return self.frameCount/self.FramesPerEpoch
+
+    def getLastFile(self):
+        files_path = os.path.join(self.FilePathModels , '*')
+        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True) 
+        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
+        file_  =str(files[0]).split('\\')[1]
+        return file_
 
     
 
