@@ -81,3 +81,16 @@ th, td {
   padding: var(--bar-size);
   width: var(--progress);
 }
+
+.controls {
+  position: absolute;
+  bottom: 20px;
+}
+
+.controls.transparent button {
+  opacity: 0.2;
+}
+
+.controls.transparent button:hover {
+  opacity: 1;
+}

@@ -7,6 +7,7 @@ import { World } from './world';
 
 export class App implements MessageListener {
   private debuggerElement: HTMLElement;
+  private controlsElement: HTMLElement;
   private websocket: Websocket;
   private world: World;
   private generationCount = 0;
@@ -22,6 +23,10 @@ export class App implements MessageListener {
     this.debuggerElement = document.createElement('div');
     this.debuggerElement.classList.add('debug');
     this.rootElement.appendChild(this.debuggerElement);
+
+    this.controlsElement = document.createElement('div');
+    this.controlsElement.classList.add('controls');
+    this.rootElement.appendChild(this.controlsElement);
 
     const mainElement = document.querySelector('#main') as HTMLElement;
     this.physics = new Physics(mainElement, this.width, this.height);
@@ -92,18 +97,41 @@ export class App implements MessageListener {
       this.world.addGameObject(snake);
     }
 
-    const snakesData = this.world.snakes.map(snake => ({
-      id: snake.id,
-      color: snake.getColor(),
-    }));
-
-    this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
-
     document.body.addEventListener('keypress', (evt) => {
       if (evt.key === 'i') {
         this.debuggerElement.classList.toggle('hidden');
+        this.controlsElement.classList.toggle('transparent');
       }
     });
+
+    const startButtonElement = document.createElement('button');
+    startButtonElement.innerHTML = 'START';
+    this.controlsElement.appendChild(startButtonElement);
+    startButtonElement.addEventListener('click', () => {
+      this.start((false));
+    });
+
+    const resumeButtonElement = document.createElement('button');
+    resumeButtonElement.innerHTML = 'RESUME';
+    this.controlsElement.appendChild(resumeButtonElement);
+    resumeButtonElement.addEventListener('click', () => {
+      this.start();
+    });
+  }
+
+  start(resume = true) {
+    this.reset();
+
+    if (!resume) {
+    const snakesData = this.world.snakes.map(snake => ({
+        id: snake.id,
+        color: snake.getColor(),
+      }));
+
+      this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
+    }
+
+    this.world.begin();
   }
 
   reset() {
@@ -121,11 +149,6 @@ export class App implements MessageListener {
       }
     });
     this.world.reset();
-  }
-
-  start() {
-    this.reset();
-    this.world.begin();
   }
 
   private drawDebugInfo() {
