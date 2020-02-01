@@ -1,18 +1,13 @@
 import { Body, Composite, Vector } from "matter-js";
+import { Config } from "./config";
 import { Food } from "./food";
 import { GameObject, GameObjectType } from "./utils";
 
-export const SNAKE_LENGTH = 50;
-export const SNAKE_ENERGY_LEVEL_INITIAL = 10000;
-
 export class Snake implements GameObject {
-
-  static SNAKE_HEAD_SIZE = 12;
-  static SNAKE_TAIL_SIZE = 9;
 
   type = GameObjectType.SNAKE;
 
-  energyLevel = SNAKE_ENERGY_LEVEL_INITIAL;
+  energyLevel = Config.SNAKE_ENERGY_LEVEL_INITIAL;
   energyIntake = 0;
   dead: boolean = false;
   id: number;
@@ -68,7 +63,7 @@ export class Snake implements GameObject {
 
   reset(): void {
     this.energyIntake = 0;
-    this.energyLevel = SNAKE_ENERGY_LEVEL_INITIAL;
+    this.energyLevel = Config.SNAKE_ENERGY_LEVEL_INITIAL;
     this.dead = false;
   }
 

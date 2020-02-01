@@ -29,6 +29,10 @@ body, html {
   grid-template-columns: 1fr 1fr;
 }
 
+.debug.hidden {
+  display: none;
+}
+
 .snakes {
   overflow-y: scroll;
   justify-self: end;
@@ -46,4 +50,34 @@ th, td {
 
 .reset-button {
   display: none;
+}
+
+:root {
+  --green: #75b800;
+  --gray-light: #eef1f3;
+  --bar-size: 5px;
+  --bar-radius: 60px;
+  --bar-bg: rgba(255,255,255,0.1);
+}
+
+.progress-bar {
+  border-radius: var(--bar-radius);
+  overflow: hidden;
+  width: 200px;
+  height: var(--bar-size);
+}
+
+.bar {
+  display: block;
+  height: var(--bar-size);
+  background: var(--bar-bg);
+}
+
+.progress {
+  display: block;
+  background: var(--green);
+  height: var(--bar-size);
+  color: #fff;
+  padding: var(--bar-size);
+  width: var(--progress);
 }

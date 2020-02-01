@@ -1,12 +1,10 @@
 import { Body, Engine, Events, IEventCollision, IPair, World as MWorld } from "matter-js";
+import { Config } from "./config";
 import { Food } from "./food";
 import { Physics } from "./physics";
 import { Snake } from "./snake";
 import { GameObject, GameObjectType } from "./utils";
 import { MessageId, MessageType, Websocket } from "./websocket";
-
-const AI_CALL_FREQUENCY = 10;
-export const GENERATION_SNAKE_COUNT = 20;
 
 let worldCount = 0;
 
@@ -90,7 +88,7 @@ export class World {
     ];
 
     // send "snakes" message?
-    if (this.tickCount % AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
+    if (this.tickCount % Config.AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
       this.sendWebSocketMessage(MessageType.DATA, {
         matrix: this.toBitMatrix(),
         snakeIds: this.snakeIds,

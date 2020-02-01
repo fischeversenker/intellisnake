@@ -58,6 +58,7 @@ class WebSocketServer:
             data = self.processMessageTypeGeneration(messageData)
             if DEBUG_MODE:
                 print("evole generation...")
+            self.nes.saveModel(self.generation)
             self.nes.updateModel(data)
             self.generation = self.generation +1
             if DEBUG_MODE:
