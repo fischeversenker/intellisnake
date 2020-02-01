@@ -1,14 +1,9 @@
 import Matter, { Bodies, Body, Composite, Composites, Engine, IBodyDefinition, IMouseConstraintDefinition, Mouse, MouseConstraint, Render, Runner, Vector, World } from 'matter-js';
+import { Config } from './config';
 import { Snake } from './snake';
 import { GameObjectType } from './utils';
 
-export const STARTING_BODY_ID = 666;
-
-const TEMP_RENDER_WIDTH = 100;
-const TEMP_RENDER_HEIGHT = 100;
 const BOUNDARY_WIDTH = 80;
-const FOOD_SIZE = 24;
-const FOOD_COLOR = 'rgb(234, 123, 198)';
 
 const snakeColors: Map<number, string> = new Map();
 
@@ -104,7 +99,7 @@ export class Physics {
     // naturally you would set this to 0... but apparently matter-js places some things
     // on the world before you even start working on it. The starting id was always 5 for me.
     // to overcome this we start with an arbitrary (but higher than 5) number as our starting id.
-    this.matterCommon._nextId = STARTING_BODY_ID;
+    this.matterCommon._nextId = Config.STARTING_BODY_ID;
 
     // add mouse control
     const mouse = Mouse.create(this.render.canvas);
@@ -128,14 +123,14 @@ export class Physics {
   createSnakeBody(x: number, y: number, length: number): Composite {
     const group = Body.nextGroup(true);
     const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
-      return Bodies.circle(x, y, Snake.SNAKE_TAIL_SIZE, {
+      return Bodies.circle(x, y, Config.SNAKE_TAIL_SIZE, {
         chamfer: 5,
         frictionAir: 0.1,
         collisionFilter: { group },
         label: GameObjectType.SNAKE_TAIL,
       } as IBodyDefinition);
     })
-    Composite.add(composite, Bodies.circle(x, y + length * 10, Snake.SNAKE_HEAD_SIZE, {
+    Composite.add(composite, Bodies.circle(x, y + length * 10, Config.SNAKE_HEAD_SIZE, {
       chamfer: 5,
       collisionFilter: { group },
       label: GameObjectType.SNAKE,
@@ -174,13 +169,13 @@ export class Physics {
   }
 
   createFood(x: number, y: number = 500): Body {
-    return Bodies.circle(x, y, FOOD_SIZE, {
+    return Bodies.circle(x, y, Config.FOOD_SIZE, {
       label: String(GameObjectType.FOOD),
       friction: 0,
       frictionAir: 0.4,
       inertia: 0,
       render: {
-        fillStyle: FOOD_COLOR,
+        fillStyle: Config.FOOD_COLOR,
         opacity: 1,
       },
     });
@@ -210,7 +205,7 @@ export class Physics {
   destroy() {
     console.log('[PHYSICS]: destroy()');
     World.clear(this.world, true);
-    this.matterCommon._nextId = STARTING_BODY_ID;
+    this.matterCommon._nextId = Config.STARTING_BODY_ID;
   }
 
   getImageData(): ImageData {
@@ -222,8 +217,8 @@ export class Physics {
         const tempRenderContext = this.tempRender.canvas.getContext('2d');
         if (tempRenderContext) {
           tempRenderContext.clearRect(0, 0, this.width, this.height);
-          tempRenderContext.drawImage(context.canvas, 0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
-          imgData = tempRenderContext.getImageData(0, 0, TEMP_RENDER_WIDTH, TEMP_RENDER_HEIGHT);
+          tempRenderContext.drawImage(context.canvas, 0, 0, Config.TEMP_RENDER_WIDTH, Config.TEMP_RENDER_HEIGHT);
+          imgData = tempRenderContext.getImageData(0, 0, Config.TEMP_RENDER_WIDTH, Config.TEMP_RENDER_HEIGHT);
         }
       }
     }

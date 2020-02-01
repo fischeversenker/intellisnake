@@ -1,7 +1,6 @@
-import { Composite, Vector, Body } from "matter-js";
+import { Body, Vector } from "matter-js";
+import { Config } from "./config";
 import { GameObject, GameObjectType } from "./utils";
-
-const MAX_FOOD_AGE = 30 * 1000;
 
 export class Food implements GameObject {
 
@@ -24,7 +23,7 @@ export class Food implements GameObject {
       return;
     }
 
-    if (this.appearance && Date.now() - this.appearance > MAX_FOOD_AGE) {
+    if (this.appearance && Date.now() - this.appearance > Config.MAX_FOOD_AGE) {
       this.dead = true;
     }
   }

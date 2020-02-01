@@ -1,10 +1,9 @@
-import { Body, Vector, World as MWorld, Composite } from 'matter-js';
+import { Composite, Vector, World as MWorld } from 'matter-js';
+import { Config } from './config';
 import { Physics } from './physics';
 import { Snake } from './snake';
 import { Message, MessageListener, MessageType, Websocket } from './websocket';
-import { GENERATION_SNAKE_COUNT, World } from './world';
-
-export const GENERATION_DURATION_MS = 30 * 1000;
+import { World } from './world';
 
 export class App implements MessageListener {
   private debuggerElement: HTMLElement;
@@ -85,7 +84,7 @@ export class App implements MessageListener {
 
   init() {
     // add snakes
-    for (let i = 0; i < GENERATION_SNAKE_COUNT; i++) {
+    for (let i = 0; i < Config.GENERATION_SNAKE_COUNT; i++) {
       const snakeComposite = this.physics.getRandomSnake();
       MWorld.add(this.physics.world, snakeComposite);
       const snake = new Snake(snakeComposite);
