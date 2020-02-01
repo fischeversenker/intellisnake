@@ -42,15 +42,15 @@ export class App implements MessageListener {
 
   onMessage(message: Message) {
     this.lastMessage = Date.now();
-    this.drawDebugInfo();
     switch (message.type) {
       case MessageType.START:
-        console.log('[MAIN]: starting world');
+        console.log(`[MAIN]: starting generation ${message.data.generation}`);
+        this.generationCount = message.data.generation as number;
+        this.generationProgress = 0;
         this.start();
         break;
       case MessageType.GENERATION:
-        console.log(`[MAIN]: ending generation #${this.generationCount}`);
-        this.generationCount = message.data.generation as number;
+        console.log(`[MAIN]: ending generation ${this.generationCount}`);
         this.websocket.send({ type: MessageType.GENERATION, data: { snakes: this.world.getGenerationData() } });
         break;
       case MessageType.ERROR:
@@ -80,6 +80,7 @@ export class App implements MessageListener {
       default:
         console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
     }
+    this.drawDebugInfo();
   }
 
   init() {
