@@ -42,7 +42,8 @@ class AI():
         self.buildModel()
         file_ = self.getLastFile()
         self.model.load_weights('{}{}'.format(self.FilePathModels,file_))
-        return file_.split(".")[0]
+        generation = file_.split(".")[0]
+        return int(generation)
 
     def runModel(self,matrix,list_):
         if self.population == None:

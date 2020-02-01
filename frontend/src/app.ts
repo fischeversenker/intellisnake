@@ -108,29 +108,36 @@ export class App implements MessageListener {
     startButtonElement.innerHTML = 'START';
     this.controlsElement.appendChild(startButtonElement);
     startButtonElement.addEventListener('click', () => {
-      this.start((false));
+      if (this.world) {
+        const snakesData = this.world.snakes.map(snake => ({
+          id: snake.id,
+          color: snake.getColor(),
+        }));
+        this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
+      } else {
+        window.location.reload();
+      }
     });
 
     const resumeButtonElement = document.createElement('button');
     resumeButtonElement.innerHTML = 'RESUME';
     this.controlsElement.appendChild(resumeButtonElement);
     resumeButtonElement.addEventListener('click', () => {
-      this.start();
+      if (this.world) {
+        const snakesData = this.world.snakes.map(snake => ({
+          id: snake.id,
+          color: snake.getColor(),
+        }));
+
+        this.websocket.send({ type: MessageType.RESUME, data: { snakes: snakesData } });
+      } else {
+        window.location.reload();
+      }
     });
   }
 
-  start(resume = true) {
+  start() {
     this.reset();
-
-    if (!resume) {
-    const snakesData = this.world.snakes.map(snake => ({
-        id: snake.id,
-        color: snake.getColor(),
-      }));
-
-      this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
-    }
-
     this.world.begin();
   }
 
