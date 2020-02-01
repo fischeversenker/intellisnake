@@ -37,11 +37,12 @@ class AI():
         self.IDs = dict_
         self.buildModel()
 
-    def loadModel(self,dict_:
+    def loadModel(self,dict_):
         self.IDs = dict_
         self.buildModel()
         file_ = self.getLastFile()
         self.model.load_weights('{}{}'.format(self.FilePathModels,file_))
+        return file_.split(".")[0]
 
     def runModel(self,matrix,list_):
         if self.population == None:
