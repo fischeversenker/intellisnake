@@ -69,11 +69,14 @@ class WebSocketServer:
             matrix,snakeIds = self.processMessageTypeData(messageData)
             if self.started:
                 if DEBUG_MODE:
+                    print("starting new generation...")
+                if self.nes.printFrameCount() == 1 or len(snakeIds) == 0:
+                    await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation})
+                if DEBUG_MODE:
                     print("predicting...")
                 output_json = self.nes.runModel(matrix,snakeIds)
                 await self.sendMessage(websocket, messageId, "data", output_json)
-                if self.nes.printFrameCount() == 1 or len(snakeIds) == 0:
-                    await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation})
+                
             else:
                 await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
 
