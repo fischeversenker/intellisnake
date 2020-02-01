@@ -80,7 +80,7 @@ class WebSocketServer:
                     await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation})
                 if DEBUG_MODE:
                     print("predicting...")
-                elif:
+                else:
                     output_json = self.nes.runModel(matrix,snakeIds)
                     await self.sendMessage(websocket, messageId, "data", output_json)
                 
