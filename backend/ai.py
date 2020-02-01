@@ -30,7 +30,7 @@ class AI():
         self.FramesPerEpoch = 300
         self.population = None
         self.entityCentricScaling = 0.1
-        self.nonTrainableLayers = [4]
+        self.nonTrainableLayers = []
         
     def startModel(self,dict_):
         self.IDs = dict_
