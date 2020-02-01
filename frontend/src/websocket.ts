@@ -1,5 +1,6 @@
 export enum MessageType {
   'START' = 'start',
+  'RESUME' = 'resume',
   'DATA' = 'data',
   'GENERATION' = 'generation',
   'RESTART' = 'restart',

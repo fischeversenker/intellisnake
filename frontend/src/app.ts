@@ -108,29 +108,31 @@ export class App implements MessageListener {
     startButtonElement.innerHTML = 'START';
     this.controlsElement.appendChild(startButtonElement);
     startButtonElement.addEventListener('click', () => {
-      this.start((false));
+      const snakesData = this.world.snakes.map(snake => ({
+        id: snake.id,
+        color: snake.getColor(),
+      }));
+      this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
+      this.start();
     });
 
     const resumeButtonElement = document.createElement('button');
     resumeButtonElement.innerHTML = 'RESUME';
     this.controlsElement.appendChild(resumeButtonElement);
     resumeButtonElement.addEventListener('click', () => {
-      this.start();
-    });
-  }
 
-  start(resume = true) {
-    this.reset();
-
-    if (!resume) {
-    const snakesData = this.world.snakes.map(snake => ({
+      const snakesData = this.world.snakes.map(snake => ({
         id: snake.id,
         color: snake.getColor(),
       }));
 
-      this.websocket.send({ type: MessageType.START, data: { snakes: snakesData } });
-    }
+      this.websocket.send({ type: MessageType.RESUME, data: { snakes: snakesData } });
+      this.start();
+    });
+  }
 
+  start() {
+    this.reset();
     this.world.begin();
   }
 
