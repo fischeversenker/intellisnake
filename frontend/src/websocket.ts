@@ -24,6 +24,10 @@ export class Websocket {
   private nativeWebsocket: WebSocket;
   private messageCount = 0;
   private listeners: MessageListener[] = [];
+  private lastMessageReceived = 0;
+  private lastMessageSent = 0;
+  private messageDelays: number[] = [];
+  private sendDelays: number[] = [];
 
   constructor(
     onOpen: (evt: any) => void = () => {},
@@ -45,7 +49,17 @@ export class Websocket {
     return Websocket.instance;
   }
 
+  getLastMessageDelays(limit = 50) {
+    return this.messageDelays.slice(this.messageDelays.length - limit);
+  }
+
+  getLastMessageSentDelays(limit = 50) {
+    return this.sendDelays.slice(this.sendDelays.length - limit);
+  }
+
   onMessage(evt: any) {
+    this.lastMessageReceived = Date.now();
+    this.messageDelays.push(this.lastMessageReceived - this.lastMessageSent);
     this.listeners.forEach(listener => listener.onMessage(JSON.parse(evt.data)));
   }
 
@@ -55,6 +69,8 @@ export class Websocket {
         messageId: this.messageCount,
         ...data,
       }));
+      this.lastMessageSent = Date.now();
+      this.sendDelays.push(this.lastMessageReceived - this.lastMessageSent);
     }
 
     return this.messageCount++;
