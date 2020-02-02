@@ -16,17 +16,32 @@ body, html {
 
 .debug {
   box-sizing: border-box;
-  position: fixed;
+  position: absolute;
   background-color: #00000022;
-  bottom: 0;
+  top: 0;
+  left: 0;
+  height: 100vh;
   padding: 20px 40px;
-  width: 100%;
-  height: 200px;
+  width: 300px;
   color: white;
   font-family: sans-serif;
-  display: grid;
-  grid-gap: 7px 13px;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
+  opacity: 0.3;
+  transition: opacity .1s ease-in;
+  overflow-y: scroll;
+}
+
+.debug::-webkit-scrollbar {
+  display: none;
+}
+
+.debug > div {
+  margin-bottom: 20px;
+}
+
+.debug:hover {
+  opacity: 1;
 }
 
 .hidden {
@@ -34,17 +49,19 @@ body, html {
 }
 
 .snakes {
-  overflow-y: scroll;
-  justify-self: end;
+  overflow-y: visible;
   padding: 0 20px;
 }
 
-.generation-info {
-  align-self: flex-end;
+.graphs {
+  width: 100%;
+}
+
+.generation-info table {
+  width: 100%;
 }
 
 th, td {
-  min-width: 40px;
   text-align: right;
 }
 
@@ -63,7 +80,7 @@ th, td {
 .progress-bar {
   border-radius: var(--bar-radius);
   overflow: hidden;
-  width: 200px;
+  width: 90px;
   height: var(--bar-size);
 }
 
@@ -85,4 +102,7 @@ th, td {
 .controls {
   position: absolute;
   bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
 }

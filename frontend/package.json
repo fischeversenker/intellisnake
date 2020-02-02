@@ -35,6 +35,8 @@
     "ws": "^7.2.1"
   },
   "dependencies": {
+    "@types/chart.js": "^2.9.11",
+    "chart.js": "^2.9.3",
     "matter-js": "^0.14.2"
   }
 }
