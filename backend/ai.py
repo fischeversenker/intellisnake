@@ -7,7 +7,7 @@ import json
 import pandas as pd
 from sklearn.preprocessing import QuantileTransformer
 from PIL import Image
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Flatten, BatchNormalization
+from keras.layers import Input, Dense, Conv2D,MaxPooling2D, Flatten, BatchNormalization
 from keras.models import Model, load_model
 from keras.initializers import Constant
 from keras.constraints import MinMaxNorm
@@ -94,13 +94,13 @@ class AI():
 
     def evoleModel(self,dict_):
         A = self.getReward(dict_)
-       # B = self.diversityReward(self.predictions)
-     #   C = self.sumRewards(A, B)
+        B = self.diversityReward(self.predictions)
+        C = self.sumRewards(A, B)
         if sum(list(A.values())) == 0:
             pass
         else:
             w = self.getModelWeights()
-            N = self.weighting(A,self.N)
+            N = self.weighting(C,self.N)
             w_add = self.weightedSumWeights(N,w)
             w = w + w_add
             self.model.set_weights(w)
@@ -120,7 +120,7 @@ class AI():
 
     def diversityReward(self,dict_):
         for element in dict_:
-            dict_[element] = len(np.unique(np.array(dict_[element]), axis=0))/len(np.array(dict_[element]))
+            dict_[element] = len(np.unique(np.around(np.array(dict_[element]),decimals =0), axis=0))/len(np.array(dict_[element]))
         R = list(dict_.values())
         print("Unique actions per snake: {}%".format(round((sum(R)/len(self.population))*100),4))
         keys = list(dict_.keys())
