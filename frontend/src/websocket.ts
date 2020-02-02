@@ -70,7 +70,7 @@ export class Websocket {
         ...data,
       }));
       this.lastMessageSent = Date.now();
-      this.sendDelays.push(this.lastMessageReceived - this.lastMessageSent);
+      this.sendDelays.push(-1 * (this.lastMessageSent - this.lastMessageReceived));
     }
 
     return this.messageCount++;
