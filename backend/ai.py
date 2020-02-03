@@ -18,7 +18,7 @@ import math
 
 class AI():
     def __init__(self):
-        self.sigma = 0.1 # noise standard deviation
+        self.sigma = 0.01 # noise standard deviation
         self.alpha = 0.1 
         self.shape = 32 #input size of NN
         self.N = None # dict to store n noiseMatrix
@@ -74,12 +74,13 @@ class AI():
 
     def buildModel(self):
         input_ = Input(shape=(self.shape,self.shape,3)) #0
-        encoder = Conv2D(8, kernel_size=(7, 7), strides = (4,4), padding='same',activation ='selu', kernel_initializer='lecun_normal', bias_initializer= Constant(0.01) )(input_) #1 change to lecun_normal for selu
-        x = Conv2D(32, kernel_size=(3, 3),strides =(4,4), padding='same',activation ='selu', kernel_initializer='lecun_normal', bias_initializer= Constant(0.01))(encoder) #3
-        x = Flatten()(x) #4
-        x = Dense(units= 128, activation = 'tanh', kernel_initializer='glorot_uniform', bias_initializer='zeros')(x) #5
-        x = Dense(units= 64, activation = 'tanh', kernel_initializer='glorot_uniform', bias_initializer='zeros')(x) #6
-        output = Dense(units = 2, activation='tanh', kernel_initializer='glorot_uniform', bias_initializer= 'zeros')(x) #7
+        encoder = Conv2D(16, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(input_) #1 change to lecun_normal for selu
+        encoder = Conv2D(24, kernel_size=(3, 3), strides = (2,2), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
+        encoder = Conv2D(32, kernel_size=(3, 3), strides = (2,2), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
+        x = Flatten()(encoder) #3
+        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) #4
+        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) #4
+        output = Dense(units = 2, activation='tanh', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) #6
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
         print(self.model.summary())
@@ -96,7 +97,7 @@ class AI():
         A = self.getReward(dict_)
         B = self.diversityReward(self.predictions)
         C = self.sumRewards(A, B)
-        if sum(list(A.values())) == 0:
+        if sum(list(C.values())) == 0:
             pass
         else:
             w = self.getModelWeights()
@@ -120,7 +121,7 @@ class AI():
 
     def diversityReward(self,dict_):
         for element in dict_:
-            dict_[element] = len(np.unique(np.around(np.array(dict_[element]),decimals =0), axis=0))/len(np.array(dict_[element]))
+            dict_[element] = len(np.unique(np.around(np.array(dict_[element]),decimals =1), axis=0))/len(np.array(dict_[element]))
         R = list(dict_.values())
         print("Unique actions per snake: {}%".format(round((sum(R)/len(self.population))*100),4))
         keys = list(dict_.keys())
@@ -162,8 +163,6 @@ class AI():
                     for element in list(N.keys()):
                         w_add[i][j] = N[element][i][j] + w_add[i][j]
                     w_add[i][j] = np.reshape(scalingFactor*w_add[i][j], w_add[i][j].shape)   
-                    if 0 == np.sum(w_add[i][j]):
-                        print("weights with zeros only i: {} j: {}".format(i,j))
                     if np.isfinite(w_add[i][j]).any():
                         pass
                     else:
