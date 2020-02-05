@@ -1,71 +1,35 @@
-import Chart from 'chart.js';
 import { Composite, Vector, World as MWorld } from 'matter-js';
 import { Config } from './config';
+import { InfoOverlay } from './info-overlay';
 import { Physics } from './physics';
 import { Snake } from './snake';
 import { Message, MessageListener, MessageType, Websocket } from './websocket';
 import { World } from './world';
 
 export class App implements MessageListener {
-  private debuggerElement: HTMLElement;
-  private generationInfoElement: HTMLElement;
-  private snakeListElement: HTMLElement;
-  private graphsElement: HTMLElement;
-  private graphsContext: CanvasRenderingContext2D;
-  private controlsElement: HTMLElement;
   private websocket: Websocket;
+  private infoOverlay: InfoOverlay;
   private world: World;
   private generationCount = 0;
   private physics: Physics;
   private generationProgress = 0;
-  private infoVisible = true;
 
   constructor(
     private rootElement: HTMLElement,
     private width: number,
     private height: number,
   ) {
-    this.debuggerElement = document.createElement('div');
-    this.debuggerElement.classList.add('debug', 'focused');
-    this.rootElement.appendChild(this.debuggerElement);
+    this.websocket = Websocket.getInstance(() => this.init(), evt => this.onWebsocketClose(evt));
+    this.websocket.registerListener(this);
 
-    this.debuggerElement.addEventListener('click', () => {
-      this.debuggerElement.classList.toggle('focused');
-    });
-
-    this.generationInfoElement = document.createElement('div');
-    this.generationInfoElement.classList.add('generation-info');
-    this.debuggerElement.appendChild(this.generationInfoElement);
-
-    this.graphsElement = document.createElement('div');
-    this.graphsElement.classList.add('graphs');
-    this.debuggerElement.appendChild(this.graphsElement);
-
-    const graphsHeadline = document.createElement('h4');
-    graphsHeadline.innerHTML = 'Communication delays';
-    this.graphsElement.appendChild(graphsHeadline);
-
-    const graphsCanvas = document.createElement('canvas');
-    this.graphsElement.appendChild(graphsCanvas);
-    this.graphsContext = graphsCanvas.getContext('2d')!;
-
-    this.snakeListElement = document.createElement('div');
-    this.snakeListElement.classList.add('snakes');
-    this.debuggerElement.appendChild(this.snakeListElement);
-
-    this.controlsElement = document.createElement('div');
-    this.controlsElement.classList.add('controls');
-    this.rootElement.appendChild(this.controlsElement);
+    this.infoOverlay = new InfoOverlay(this.rootElement, () => this.onStartButton(), () => this.onResumeButton());
 
     const mainElement = document.querySelector('#main') as HTMLElement;
     this.physics = new Physics(mainElement, this.width, this.height);
 
-    this.websocket = Websocket.getInstance(() => this.init(), evt => this.onWebsocketClose(evt));
-    this.websocket.registerListener(this);
-
     this.world = new World(this.physics, this.width, this.height);
 
-    this.drawDebugInfo();
+    this.infoOverlay.update(this.world.aliveSnakes, this.generationCount, this.generationProgress);
   }
 
   onWebsocketClose(evt: any): void {
@@ -115,7 +79,7 @@ export class App implements MessageListener {
       default:
         console.log(`[WORLD]: I don't know how to handle messages of type ${message.type}. Message was: ${message.data}`);
     }
-    this.drawDebugInfo();
+    this.infoOverlay.update(this.world.aliveSnakes, this.generationCount, this.generationProgress);
   }
 
   init() {
@@ -126,19 +90,9 @@ export class App implements MessageListener {
       const snake = new Snake(snakeComposite);
       this.world.addGameObject(snake);
     }
+  }
 
-    document.body.addEventListener('keypress', (evt) => {
-      if (evt.key === 'i') {
-        this.infoVisible = !this.infoVisible;
-        this.debuggerElement.classList.toggle('hidden');
-        this.controlsElement.classList.toggle('hidden');
-      }
-    });
-
-    const startButtonElement = document.createElement('button');
-    startButtonElement.innerHTML = 'START';
-    this.controlsElement.appendChild(startButtonElement);
-    startButtonElement.addEventListener('click', () => {
+  onStartButton(): void {
       if (this.world) {
         const snakesData = this.world.snakes.map(snake => ({
           id: snake.id,
@@ -148,12 +102,9 @@ export class App implements MessageListener {
       } else {
         window.location.reload();
       }
-    });
+  }
 
-    const resumeButtonElement = document.createElement('button');
-    resumeButtonElement.innerHTML = 'RESUME';
-    this.controlsElement.appendChild(resumeButtonElement);
-    resumeButtonElement.addEventListener('click', () => {
+  onResumeButton(): void {
       if (this.world) {
         const snakesData = this.world.snakes.map(snake => ({
           id: snake.id,
@@ -164,7 +115,6 @@ export class App implements MessageListener {
       } else {
         window.location.reload();
       }
-    });
   }
 
   start() {
@@ -191,89 +141,5 @@ export class App implements MessageListener {
 
   private sendWebsocketMessage(type: MessageType, data: any) {
     this.websocket.send({ type, data: { snakes: data } });
-  }
-
-  private drawDebugInfo() {
-    if (!this.infoVisible) {
-      return;
-    }
-
-    const snakeRows = this.world.aliveSnakes
-      .sort((a, b) => b.energyLevel - a.energyLevel)
-      .map(snake => `<tr><td style='background-color: rgb(${snake.getColor().join(',')})'></td><td>${Math.floor(snake.energyIntake)}</td><td>${Math.floor(snake.energyLevel)}</td></tr>`)
-      .join('');
-
-    const generationInfo = `
-      <h4>Meta</h4>
-      <table>
-        <tr>
-          <th>generation:</td><td>${this.generationCount}</td>
-        </tr>
-        <tr>
-          <th>snakes alive:</td><td>${this.world.aliveSnakes.length}</td>
-        </tr>
-        <tr>
-          <th>progress:</td>
-          <td>
-            <div class="progress-bar">
-              <div class="bar">
-                <div class="progress" style="--progress:${Math.floor(this.generationProgress * 100)}%;"></div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </table>
-    `;
-
-    this.generationInfoElement.innerHTML = generationInfo;
-
-    const lastDelays = this.websocket.getLastMessageDelays(50);
-    const lastSendDelays = this.websocket.getLastMessageSentDelays(50);
-    const labels = lastDelays.map((_, index) => `-${Math.min(50, lastDelays.length) - index}`);
-    new Chart(this.graphsContext, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'backend',
-          backgroundColor: 'rebeccapurple',
-          data: lastDelays,
-        }, {
-          label: 'frontend',
-          backgroundColor: '#75b800',
-          data: lastSendDelays,
-        }]
-      },
-      options: {
-        animation: {
-          duration: 0,
-        },
-        elements: {
-          point: {
-            radius: 0,
-          },
-        },
-        scales: {
-          yAxes: [{
-            ticks: {
-              maxTicksLimit: 3,
-              suggestedMin: 100,
-              suggestedMax: 100,
-            },
-            position: 'right',
-          }],
-        },
-      },
-    });
-
-    this.snakeListElement.innerHTML = `
-      <h4>Snakes</h4>
-      <table>
-        <tr>
-          <th>Color</th><th>EI</th><th>EL</th>
-        </tr>
-        ${snakeRows}
-      </table>
-    `;
   }
 }
