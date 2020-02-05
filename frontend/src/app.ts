@@ -26,8 +26,12 @@ export class App implements MessageListener {
     private height: number,
   ) {
     this.debuggerElement = document.createElement('div');
-    this.debuggerElement.classList.add('debug');
+    this.debuggerElement.classList.add('debug', 'focused');
     this.rootElement.appendChild(this.debuggerElement);
+
+    this.debuggerElement.addEventListener('click', () => {
+      this.debuggerElement.classList.toggle('focused');
+    });
 
     this.generationInfoElement = document.createElement('div');
     this.generationInfoElement.classList.add('generation-info');

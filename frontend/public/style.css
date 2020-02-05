@@ -32,6 +32,16 @@ body, html {
   overflow-y: scroll;
 }
 
+.debug::before {
+  content: '(click me to pin me)';
+  display: block;
+  font-size: small;
+  position: absolute;
+  opacity: 0.5;
+  left: 25%;
+  bottom: 20px;
+}
+
 .debug::-webkit-scrollbar {
   display: none;
 }
@@ -40,8 +50,12 @@ body, html {
   margin-bottom: 20px;
 }
 
-.debug:hover {
+.debug.focused {
   opacity: 1;
+}
+
+.debug:not(.focused):hover {
+  opacity: 0.8;
 }
 
 .hidden {
