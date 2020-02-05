@@ -1,5 +1,4 @@
 export class Config {
-  static AI_CALL_FREQUENCY = 10;
   static GENERATION_SNAKE_COUNT = 5;
   static SNAKE_LENGTH = 50;
   static SNAKE_ENERGY_LEVEL_INITIAL = 1500;

@@ -16,7 +16,6 @@ export class World {
   private websocket: Websocket;
   private pendingWebSocketRequests: MessageId[] = [];
   private gameObjects: GameObject[] = [];
-  private tickCount = 0;
 
   constructor(
     private physics: Physics,
@@ -88,14 +87,12 @@ export class World {
     ];
 
     // send "snakes" message?
-    if (this.tickCount % Config.AI_CALL_FREQUENCY === 0 && this.pendingWebSocketRequests.length === 0) {
+    if (this.pendingWebSocketRequests.length === 0) {
       this.sendWebSocketMessage(MessageType.DATA, {
         matrix: this.toBitMatrix(),
         snakeIds: this.snakeIds,
       });
     }
-
-    this.tickCount++;
   }
 
   handleCollissions = (event: IEventCollision<Engine>) => {
