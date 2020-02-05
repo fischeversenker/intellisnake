@@ -235,12 +235,12 @@ export class App implements MessageListener {
       data: {
         labels: labels,
         datasets: [{
-          label: 'received - sent',
+          label: 'backend',
           backgroundColor: 'rebeccapurple',
           data: lastDelays,
         }, {
-          label: 'sent - (sent - 1)',
-          backgroundColor: 'rgba(33, 66, 99, 44)',
+          label: 'frontend',
+          backgroundColor: '#75b800',
           data: lastSendDelays,
         }]
       },
@@ -248,16 +248,22 @@ export class App implements MessageListener {
         animation: {
           duration: 0,
         },
+        elements: {
+          point: {
+            radius: 0,
+          },
+        },
         scales: {
           yAxes: [{
             ticks: {
-              beginAtZero: true,
-              max: 200,
-              min: -200,
+              maxTicksLimit: 3,
+              suggestedMin: 100,
+              suggestedMax: 100,
             },
-          }]
-        }
-      }
+            position: 'right',
+          }],
+        },
+      },
     });
 
     this.snakeListElement.innerHTML = `

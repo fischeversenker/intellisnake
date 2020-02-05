@@ -15,6 +15,8 @@ export type Message = {
 
 export type MessageId = number;
 
+const MAX_DELAY = 2000;
+
 export interface MessageListener {
   onMessage: (message: Message) => void;
 }
@@ -50,16 +52,25 @@ export class Websocket {
   }
 
   getLastMessageDelays(limit = 50) {
-    return this.messageDelays.slice(this.messageDelays.length - limit);
+    if (this.messageDelays.length > limit) {
+      this.messageDelays = this.messageDelays.slice(this.messageDelays.length - limit);
+    }
+    return this.messageDelays;
   }
 
   getLastMessageSentDelays(limit = 50) {
-    return this.sendDelays.slice(this.sendDelays.length - limit);
+    if (this.sendDelays.length > limit) {
+      this.sendDelays = this.sendDelays.slice(this.sendDelays.length - limit);
+    }
+    return this.sendDelays;
   }
 
   onMessage(evt: any) {
     this.lastMessageReceived = Date.now();
-    this.messageDelays.push(this.lastMessageReceived - this.lastMessageSent);
+    const delay = this.lastMessageReceived - this.lastMessageSent;
+    if (Math.abs(delay) < MAX_DELAY) {
+      this.messageDelays.push(delay);
+    }
     this.listeners.forEach(listener => listener.onMessage(JSON.parse(evt.data)));
   }
 
@@ -70,7 +81,10 @@ export class Websocket {
         ...data,
       }));
       this.lastMessageSent = Date.now();
-      this.sendDelays.push(-1 * (this.lastMessageSent - this.lastMessageReceived));
+      const delay = this.lastMessageSent - this.lastMessageReceived;
+      if (Math.abs(delay) < MAX_DELAY) {
+        this.sendDelays.push(-delay);
+      }
     }
 
     return this.messageCount++;
