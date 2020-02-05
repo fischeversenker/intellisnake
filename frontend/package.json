@@ -6,8 +6,9 @@
   "scripts": {
     "start": "npm run serve",
     "serve": "live-server dist",
-    "dev": "run-p tsc:watch bundle:watch copy:public:watch serve",
-    "dev:mock": "run-p dev mock-server",
+    "serve:silent": "live-server dist --no-browser",
+    "dev": "run-p tsc:watch bundle:watch copy:public:watch serve:silent",
+    "dev:mock": "run-p dev:silent mock-server",
     "build": "run-s tsc bundle copy:public",
     "build:watch": "run-s tsc:watch bundle:watch copy:public:watch",
     "tsc": "tsc",
