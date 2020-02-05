@@ -18,9 +18,9 @@ import math
 
 class AI():
     def __init__(self):
-        self.sigma = 0.01 # noise standard deviation
+        self.sigma = 0.1 # noise standard deviation
         self.alpha = 0.1 
-        self.shape = 32 #input size of NN
+        self.shape = 100 #input size of NN
         self.N = None # dict to store n noiseMatrix
         self.W_try = None # dict to store weights
         self.predictions = None
@@ -28,9 +28,8 @@ class AI():
         self.IDs = {}
         self.FilePathModels = "./models/"
         self.frameCount = 0
-        self.FramesPerEpoch = 300
+        self.FramesPerEpoch = 500
         self.population = None
-        self.entityCentricScaling = 0.1
         self.nonTrainableLayers = []
         
     def startModel(self,dict_):
@@ -66,21 +65,20 @@ class AI():
 
     def updateModel(self,dict_):
         self.evoleModel(dict_)
-        #self.population = None
         self.W_try = None
         self.N = None
         self.predictions = None
         self.frameCount = 0
 
     def buildModel(self):
-        input_ = Input(shape=(self.shape,self.shape,3)) #0
-        encoder = Conv2D(16, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(input_) #1 change to lecun_normal for selu
-        encoder = Conv2D(24, kernel_size=(3, 3), strides = (2,2), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
-        encoder = Conv2D(32, kernel_size=(3, 3), strides = (2,2), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
-        x = Flatten()(encoder) #3
-        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) #4
-        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) #4
-        output = Dense(units = 2, activation='tanh', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) #6
+        input_ = Input(shape=(self.shape,self.shape,3)) 
+        encoder = Conv2D(16, kernel_size=(7, 7), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(input_) 
+        encoder = Conv2D(24, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
+        encoder = Conv2D(32, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
+        x = Flatten()(encoder) 
+        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) 
+        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) 
+        output = Dense(units = 2, activation='tanh', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
         print(self.model.summary())
@@ -116,7 +114,7 @@ class AI():
         if sum(R) == 0:
             A = [0 for r in R]
         else:
-            A = (R - np.mean(R)) / np.std(R) # map to gaussian distribution
+            A = (R - np.mean(R)) / (np.std(R) + 0.00001) # map to gaussian distribution
         return  dict(zip(keys,A))
 
     def diversityReward(self,dict_):
@@ -147,7 +145,6 @@ class AI():
             w_weighted = N[element]
             loss = np.array(A[element], dtype = np.float64)
             for i in range(len(w_weighted)):
-                if i not in self.nonTrainableLayers:
                     for j in range(len(w_weighted[i])):
                          w_weighted[i][j] = np.reshape(np.dot(w_weighted[i][j], loss), w_weighted[i][j].shape)    
             N[element] = w_weighted
@@ -157,7 +154,6 @@ class AI():
         w_add = w
         scalingFactor = (self.alpha/len(self.population))*self.sigma
         for i in range(len(w_add)):
-            if i not in self.nonTrainableLayers:
                 for j in range(len(w[i])):
                     w_add[i][j] = np.zeros(w_add[i][j].shape, dtype = np.float64)
                     for element in list(N.keys()):
@@ -205,20 +201,14 @@ class AI():
         return outputDict
 
     def reshaping(self,L):
-        shape = int(np.sqrt(len(L))) #get len and width of 2dmatrix
-        a = np.array(L).reshape(shape, shape, 3)
-        img = Image.fromarray(a.astype('uint8'),'RGB')
-        img = img.resize((self.shape,self.shape), Image.ANTIALIAS)
-        return np.array(img)
+        return np.array(L).reshape(self.shape, self.shape, 3)
 
     def preprocessInput(self,matrix):
         a = self.reshaping(matrix)
-        a = (a/255.0)*self.entityCentricScaling
-        b = np.where(a == (np.array([234, 123, 198])/255)*self.entityCentricScaling, [0.5,0.5,0.5], a) #food color
-        return b
+        return (a/255.0)
 
     def applyMask(self,a,x):
-        b = np.where(a == (np.array(self.IDs[x])/255)*self.entityCentricScaling, [1,1,1], a)
+        b = np.where(a == (np.array(self.IDs[x])/255), [1,1,1], a)
         return np.reshape(b,(-1 , self.shape, self.shape,3))
 
     def printFrameCount(self):
@@ -230,6 +220,7 @@ class AI():
         files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
         file_  =str(files[0]).split('\\')[1]
         return file_
+
 
     
 
