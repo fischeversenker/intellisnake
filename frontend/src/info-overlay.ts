@@ -2,6 +2,8 @@ import Chart from 'chart.js';
 import { Snake } from "./snake";
 import { Websocket } from "./websocket";
 
+const COMMUNICATION_SPAN = 30;
+
 export class InfoOverlay {
   private visible = true;
   private websocket: Websocket;
@@ -104,9 +106,20 @@ export class InfoOverlay {
 
     this.generationInfoElement.innerHTML = generationInfo;
 
-    const lastDelays = this.websocket.getLastMessageDelays(50);
-    const lastSendDelays = this.websocket.getLastMessageSentDelays(50);
-    const labels = lastDelays.map((_, index) => `-${Math.min(50, lastDelays.length) - index}`);
+    const lastDelays = this.websocket.getLastMessageDelays(COMMUNICATION_SPAN);
+    const lastDelaysLength = lastDelays.length;
+    const lastSendDelays = this.websocket.getLastMessageSentDelays(COMMUNICATION_SPAN);
+    const lastSendDelaysLength = lastSendDelays.length;
+    let delays = [];
+    for (let i = COMMUNICATION_SPAN - 1; i >= 0; i--) {
+      delays[i] = lastDelays[lastDelaysLength - (COMMUNICATION_SPAN - i)] || 1;
+    }
+    let sendDelays = [];
+    for (let i = COMMUNICATION_SPAN - 1; i >= 0; i--) {
+      sendDelays[i] = lastSendDelays[lastSendDelaysLength - (COMMUNICATION_SPAN - i)] || -1;
+    }
+
+    const labels = delays.map((_, index) => index - delays.length);
 
     new Chart(this.graphsContext, {
       type: 'line',
@@ -115,11 +128,11 @@ export class InfoOverlay {
         datasets: [{
           label: 'backend',
           backgroundColor: 'rebeccapurple',
-          data: lastDelays,
+          data: delays,
         }, {
           label: 'frontend',
           backgroundColor: '#75b800',
-          data: lastSendDelays,
+          data: sendDelays,
         }]
       },
       options: {

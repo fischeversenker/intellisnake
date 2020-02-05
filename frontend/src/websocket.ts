@@ -51,14 +51,14 @@ export class Websocket {
     return Websocket.instance;
   }
 
-  getLastMessageDelays(limit = 50) {
+  getLastMessageDelays(limit: number) {
     if (this.messageDelays.length > limit) {
       this.messageDelays = this.messageDelays.slice(this.messageDelays.length - limit);
     }
     return this.messageDelays;
   }
 
-  getLastMessageSentDelays(limit = 50) {
+  getLastMessageSentDelays(limit: number) {
     if (this.sendDelays.length > limit) {
       this.sendDelays = this.sendDelays.slice(this.sendDelays.length - limit);
     }

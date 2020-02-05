@@ -33,7 +33,7 @@ body, html {
 }
 
 .debug::before {
-  content: '(click me to pin me)';
+  content: 'click me to (un)pin me';
   display: block;
   font-size: small;
   position: absolute;
