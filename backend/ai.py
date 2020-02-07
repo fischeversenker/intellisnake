@@ -210,7 +210,7 @@ class AI():
         id_ = self.IDs[x]
         l = list(self.IDs.values())
         b = np.where(a == (np.array(id_)), 255, a)
-        c = np.where(np.isin(b, l), 128, a)
+        c = np.where(np.isin(b, l), 128, b)
         c = c/255
         return np.reshape(c,(-1 , self.shape, self.shape,1))
 
