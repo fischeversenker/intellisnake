@@ -201,7 +201,7 @@ class AI():
         return outputDict
 
     def reshaping(self,L):
-        return np.array(L).reshape(self.shape, self.shape, 3)
+        return np.array(L).reshape(self.shape, self.shape, 1)
 
     def preprocessInput(self,matrix):
         return self.reshaping(matrix)
