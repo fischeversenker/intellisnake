@@ -96,7 +96,7 @@ export class App implements MessageListener {
       if (this.world) {
         const snakesData = this.world.snakes.map(snake => ({
           id: snake.id,
-          color: snake.getColor(),
+          color: snake.getColor()[0],
         }));
         this.sendWebsocketMessage(MessageType.START, snakesData);
       } else {
@@ -108,7 +108,7 @@ export class App implements MessageListener {
       if (this.world) {
         const snakesData = this.world.snakes.map(snake => ({
           id: snake.id,
-          color: snake.getColor(),
+          color: snake.getColor()[0],
         }));
 
         this.sendWebsocketMessage(MessageType.RESUME, snakesData);
