@@ -15,6 +15,7 @@ export class Physics {
   private runner: Runner | null = null;
   private render: Render;
   private tempRender: Render;
+  private usedReds = [0, 234, 255];
 
   private bottomBoundary: Body;
   private topBoundary: Body;
@@ -122,12 +123,16 @@ export class Physics {
   }
 
   createSnakeBody(x: number, y: number, length: number): Composite {
+    const nextSnakeColor = this.getNextColorValue();
     const composite = Composites.stack(x, y, 1, length, 0, -2, (x: number, y: number) => {
       return Bodies.circle(x, y, Config.SNAKE_TAIL_SIZE, {
         chamfer: 5,
         frictionAir: 0.2,
         collisionFilter: { group: SNAKE_GROUP },
         label: GameObjectType.SNAKE_TAIL,
+        render: {
+          fillStyle: nextSnakeColor,
+        }
       } as IBodyDefinition);
     })
     Composite.add(composite, Bodies.circle(x, y + length * 10, Config.SNAKE_HEAD_SIZE, {
@@ -135,6 +140,9 @@ export class Physics {
       frictionAir: 0.1,
       collisionFilter: { group: SNAKE_GROUP },
       label: GameObjectType.SNAKE,
+      render: {
+        fillStyle: nextSnakeColor,
+      }
     } as IBodyDefinition));
 
     Composites.chain(composite, 0, 0.3, 0, -0.3, {
@@ -224,5 +232,16 @@ export class Physics {
       }
     }
     return imgData!;
+  }
+
+  private getNextColorValue(): string {
+    let red = 1;
+    while (this.usedReds.includes(red)) {
+      red = Math.floor(Math.random() * 255);
+    }
+    this.usedReds.push(red);
+    const green = Math.floor(Math.random() * 255);
+    const blue = Math.floor(Math.random() * 255);
+    return `rgb(${red}, ${green}, ${blue})`;
   }
 }

@@ -169,14 +169,12 @@ export class World {
     this.pendingWebSocketRequests.push(this.websocket.send({ type, data }));
   }
 
-  private toBitMatrix(): number[][] {
-    const result: number[][] = [];
+  private toBitMatrix(): number[] {
+    const result: number[] = [];
     let imageData = this.physics.getImageData();
     for (let i = 0; i + 3 <= imageData.data.length; i += 4) {
       const r = imageData.data[i];
-      const g = imageData.data[i + 1];
-      const b = imageData.data[i + 2];
-      result.push([r, g, b]);
+      result.push(r);
     }
     return result;
   }
