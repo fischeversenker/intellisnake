@@ -67,28 +67,28 @@ export class Physics {
       this.height + BOUNDARY_WIDTH / 2,
       this.width * 1.1,
       BOUNDARY_WIDTH,
-      { render: { visible: false }, isStatic: true, label: 'boundary' },
+      { render: { visible: false }, isStatic: true, label: GameObjectType.BOUNDARY },
     );
     this.topBoundary = Bodies.rectangle(
       this.width / 2,
       0 - BOUNDARY_WIDTH / 2,
       this.width * 1.1,
       BOUNDARY_WIDTH,
-      { render: { visible: false }, isStatic: true, label: 'boundary' },
+      { render: { visible: false }, isStatic: true, label: GameObjectType.BOUNDARY },
     );
     this.rightBoundary = Bodies.rectangle(
       this.width + BOUNDARY_WIDTH / 2,
       this.height / 2,
       BOUNDARY_WIDTH,
       this.height * 1.1,
-      { render: { visible: false }, isStatic: true, label: 'boundary' },
+      { render: { visible: false }, isStatic: true, label: GameObjectType.BOUNDARY },
     );
     this.leftBoundary = Bodies.rectangle(
       0 - BOUNDARY_WIDTH / 2,
       this.height / 2,
       BOUNDARY_WIDTH,
       this.height * 1.1,
-      { render: { visible: false }, isStatic: true, label: 'boundary' },
+      { render: { visible: false }, isStatic: true, label: GameObjectType.BOUNDARY },
     );
 
     World.add(this.world, [this.bottomBoundary, this.topBoundary, this.leftBoundary, this.rightBoundary]);

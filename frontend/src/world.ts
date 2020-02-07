@@ -97,18 +97,34 @@ export class World {
 
   handleCollissions = (event: IEventCollision<Engine>) => {
     const foodPairs = event.pairs.filter((pair: IPair) => {
-      if (pair.bodyA.label === String(GameObjectType.SNAKE_TAIL) || pair.bodyB.label === String(GameObjectType.SNAKE_TAIL)) {
+      if (pair.bodyA.label === GameObjectType.SNAKE_TAIL || pair.bodyB.label === GameObjectType.SNAKE_TAIL) {
         return false;
       }
-      const aIsSnakeBIsFood = pair.bodyA.label === String(GameObjectType.SNAKE) && pair.bodyB.label === String(GameObjectType.FOOD);
-      const bIsSnakeAIsFood = pair.bodyA.label === String(GameObjectType.FOOD) && pair.bodyB.label === String(GameObjectType.SNAKE);
+      const aIsSnakeBIsFood = pair.bodyA.label === GameObjectType.SNAKE && pair.bodyB.label === GameObjectType.FOOD;
+      const bIsSnakeAIsFood = pair.bodyA.label === GameObjectType.FOOD && pair.bodyB.label === GameObjectType.SNAKE;
       return aIsSnakeBIsFood || bIsSnakeAIsFood;
+    });
+
+    const boundaryPairs = event.pairs.filter((pair: IPair) => {
+      const aIsSnakeBIsBoundary = pair.bodyA.label === GameObjectType.SNAKE && pair.bodyB.label === GameObjectType.BOUNDARY;
+      const bIsSnakeAIsBoundary = pair.bodyA.label === GameObjectType.BOUNDARY && pair.bodyB.label === GameObjectType.SNAKE;
+      return aIsSnakeBIsBoundary || bIsSnakeAIsBoundary;
+    });
+
+    boundaryPairs.forEach(pair => {
+      let snake = this.snakes.find(snake => snake.id === pair.bodyA.id);
+      if (!snake) {
+        snake = this.snakes.find(snake => snake.id === pair.bodyB.id);
+      }
+      if (snake) {
+        snake.energyLevel = snake.energyLevel - 80;
+      }
     });
 
     foodPairs.forEach((pair: IPair) => {
       let snake: Snake, snakeBody: Body, food: Food, foodBody: Body;
 
-      if (pair.bodyA.label === String(GameObjectType.FOOD)) {
+      if (pair.bodyA.label === GameObjectType.FOOD) {
         foodBody = pair.bodyA;
         snakeBody = pair.bodyB;
       } else {

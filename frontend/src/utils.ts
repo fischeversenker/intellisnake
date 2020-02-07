@@ -6,6 +6,7 @@ export enum GameObjectType {
   'SNAKE' = 'snake',
   'SNAKE_TAIL' = 'snake_tail',
   'ME' = 'me',
+  'BOUNDARY' = 'boundary',
 };
 
 export interface GameObject {

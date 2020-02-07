@@ -13,6 +13,8 @@ export type Message = {
   data?: any;
 }
 
+const PORT = '8765';
+
 export type MessageId = number;
 
 const MAX_DELAY = 2000;
@@ -35,7 +37,7 @@ export class Websocket {
     onOpen: (evt: any) => void = () => {},
     onClose: (evt: any) => void = () => {},
   ) {
-    this.nativeWebsocket = new WebSocket('ws://localhost:8765') as WebSocket;
+    this.nativeWebsocket = new WebSocket(`ws://localhost:${PORT}`) as WebSocket;
     this.nativeWebsocket.onopen = onOpen;
     this.nativeWebsocket.onclose = onClose;
     this.nativeWebsocket.onmessage = (evt: any) => this.onMessage(evt);
