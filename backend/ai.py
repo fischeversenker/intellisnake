@@ -19,7 +19,7 @@ import math
 class AI():
     def __init__(self):
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.1
+        self.alpha = 0.001 
         self.shape = 100 #input size of NN
         self.N = None # dict to store n noiseMatrix
         self.W_try = None # dict to store weights
@@ -31,10 +31,9 @@ class AI():
         self.FramesPerEpoch = 500
         self.population = None
         self.nonTrainableLayers = []
-
+        
     def startModel(self,dict_):
         self.IDs = dict_
-        self.frameCount = 0
         self.buildModel()
 
     def loadModel(self,dict_):
@@ -63,7 +62,6 @@ class AI():
 
     def saveModel(self, generation):
         self.model.save_weights("{}{}.h5".format(self.FilePathModels,str(generation)))
-        self.frameCount = 0
 
     def updateModel(self,dict_):
         self.evoleModel(dict_)
@@ -73,14 +71,14 @@ class AI():
         self.frameCount = 0
 
     def buildModel(self):
-        input_ = Input(shape=(self.shape,self.shape,3))
-        encoder = Conv2D(16, kernel_size=(7, 7), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(input_)
-        encoder = Conv2D(24, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
-        encoder = Conv2D(32, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(encoder)
-        x = Flatten()(encoder)
-        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x)
-        x = Dense(units= 128, activation = 'tanh',  kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x)
-        output = Dense(units = 2, activation='tanh', kernel_initializer='truncated_normal', bias_initializer= 'zeros')(x)
+        input_ = Input(shape=(self.shape,self.shape,1)) 
+        encoder = Conv2D(16, kernel_size=(7, 7), strides = (4,4), padding='same',activation ='elu', kernel_initializer='zeros', bias_initializer= 'zeros')(input_) 
+        encoder = Conv2D(24, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='zeros', bias_initializer= 'zeros')(encoder)
+        encoder = Conv2D(32, kernel_size=(3, 3), strides = (4,4), padding='same',activation ='elu', kernel_initializer='zeros', bias_initializer= 'zeros')(encoder)
+        x = Flatten()(encoder) 
+        x = Dense(units= 128, activation = 'elu',  kernel_initializer='zeros', bias_initializer= 'zeros')(x) 
+        x = Dense(units= 128, activation = 'elu',  kernel_initializer='zeros', bias_initializer= 'zeros')(x) 
+        output = Dense(units = 2, activation='tanh', kernel_initializer='zeros', bias_initializer= 'zeros')(x) 
         self.model = Model(inputs=[input_], outputs=[output])
         self.model.compile(optimizer='adam', loss='binary_crossentropy',loss_weights=[0.1])
         print(self.model.summary())
@@ -97,7 +95,7 @@ class AI():
         A = self.getReward(dict_)
         B = self.diversityReward(self.predictions)
         C = self.sumRewards(A, B)
-        if sum(list(C.values())) == 0:
+        if sum(list(A.values())) == 0:
             pass
         else:
             w = self.getModelWeights()
@@ -127,11 +125,11 @@ class AI():
         keys = list(dict_.keys())
         A = (R - np.mean(R)) / (np.std(R) - 0.00001)
         return dict(zip(keys,A))
-
+   
     def storePrediction(self,pred_,element):
         l =self.predictions[element]
         l.append(pred_)
-        self.predictions[element] = l
+        self.predictions[element] = l 
 
     def makePrediction(self,input,element):
         self.model.set_weights(self.W_try[element])
@@ -148,7 +146,7 @@ class AI():
             loss = np.array(A[element], dtype = np.float64)
             for i in range(len(w_weighted)):
                     for j in range(len(w_weighted[i])):
-                         w_weighted[i][j] = np.reshape(np.dot(w_weighted[i][j], loss), w_weighted[i][j].shape)
+                         w_weighted[i][j] = np.reshape(np.dot(w_weighted[i][j], loss), w_weighted[i][j].shape)    
             N[element] = w_weighted
         return N
 
@@ -160,11 +158,11 @@ class AI():
                     w_add[i][j] = np.zeros(w_add[i][j].shape, dtype = np.float64)
                     for element in list(N.keys()):
                         w_add[i][j] = N[element][i][j] + w_add[i][j]
-                    w_add[i][j] = np.reshape(scalingFactor*w_add[i][j], w_add[i][j].shape)
+                    w_add[i][j] = np.reshape(scalingFactor*w_add[i][j], w_add[i][j].shape)   
                     if np.isfinite(w_add[i][j]).any():
                         pass
                     else:
-                         print("Non finite values in Weights")
+                         print("Non finite values in Weights")            
         return w_add
 
     def createNoiseMatrix(self):
@@ -182,7 +180,7 @@ class AI():
         for i in range(len(n)):
             if i not in self.nonTrainableLayers:
                 for j in range(len(w[i])):
-                    w[i][j] = w[i][j] + self.sigma*np.reshape(n[i][j],w[i][j].shape) #mutate weights of layers
+                    w[i][j] = w[i][j] + self.sigma*np.reshape(n[i][j],w[i][j].shape) #mutate weights of layers 
         return w
 
     def applyNoise(self):
@@ -206,24 +204,27 @@ class AI():
         return np.array(L).reshape(self.shape, self.shape, 3)
 
     def preprocessInput(self,matrix):
-        a = self.reshaping(matrix)
-        return (a/255.0)
+        return self.reshaping(matrix)
 
     def applyMask(self,a,x):
-        b = np.where(a == (np.array(self.IDs[x])/255), [1,1,1], a)
-        return np.reshape(b,(-1 , self.shape, self.shape,3))
+        id_ = self.IDs[x]
+        l = list(self.IDs.values())
+        b = np.where(a == (np.array(id_)), 256, a)
+        c = np.where(np.isin(a, l), 128, a)
+        c = c/255
+        return np.reshape(c,(-1 , self.shape, self.shape,1))
 
     def printFrameCount(self):
         return self.frameCount/self.FramesPerEpoch
 
     def getLastFile(self):
         files_path = os.path.join(self.FilePathModels , '*')
-        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
+        files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True) 
         files = sorted(glob.iglob(files_path), key=os.path.getctime, reverse=True)
         file_  =str(files[0]).split('\\')[1]
         return file_
 
 
+    
 
-
-
+    
