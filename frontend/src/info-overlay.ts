@@ -10,6 +10,7 @@ export class InfoOverlay {
   private debuggerElement: HTMLElement;
   private generationInfoElement: HTMLElement;
   private snakeListElement: HTMLElement;
+  private barChartElement: HTMLElement;
   private graphsElement: HTMLElement;
   private graphsContext: CanvasRenderingContext2D;
   private controlsElement: HTMLElement;
@@ -44,6 +45,19 @@ export class InfoOverlay {
     const graphsCanvas = document.createElement('canvas');
     this.graphsElement.appendChild(graphsCanvas);
     this.graphsContext = graphsCanvas.getContext('2d')!;
+
+    this.barChartElement = document.createElement('div');
+    this.barChartElement.classList.add('bar-chart');
+    this.debuggerElement.appendChild(this.barChartElement);
+
+    const leftBar = document.createElement('div');
+    leftBar.classList.add('bar-chart--left');
+    leftBar.innerHTML = 'backend';
+    this.barChartElement.appendChild(leftBar);
+    const rightBar = document.createElement('div');
+    rightBar.classList.add('bar-chart--right');
+    rightBar.innerHTML = 'frontend';
+    this.barChartElement.appendChild(rightBar);
 
     this.snakeListElement = document.createElement('div');
     this.snakeListElement.classList.add('snakes');
@@ -110,6 +124,15 @@ export class InfoOverlay {
     const lastDelaysLength = lastDelays.length;
     const lastSendDelays = this.websocket.getLastMessageSentDelays(COMMUNICATION_SPAN);
     const lastSendDelaysLength = lastSendDelays.length;
+
+    const lastDelay = Math.abs(lastDelays[lastDelays.length - 1]);
+    const lastSendDelay = Math.abs(lastSendDelays[lastSendDelays.length - 1]);
+    const frameLength = lastDelay + lastSendDelay;
+    const beDelay = lastDelay / frameLength;
+    const feDelay = lastSendDelay / frameLength;
+    this.barChartElement.style.setProperty('--be-delay', String(Math.floor(beDelay * 100) || 0));
+    this.barChartElement.style.setProperty('--fe-delay', String(Math.floor(feDelay * 100) || 0));
+
     let delays = [];
     for (let i = COMMUNICATION_SPAN - 1; i >= 0; i--) {
       delays[i] = lastDelays[lastDelaysLength - (COMMUNICATION_SPAN - i)] || 1;

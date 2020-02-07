@@ -66,6 +66,36 @@ body, html {
   overflow-y: visible;
 }
 
+.bar-chart {
+  height: 30px;
+  width: 100%;
+  display: flex;
+}
+
+.bar-chart--left {
+  position: relative;
+  box-sizing: border-box;
+  border-top-color: rebeccapurple;
+  border-top-width: 4px;
+  border-top-style: solid;
+  flex: var(--be-delay);
+  padding: 8px 10px;
+  height: 100%;
+}
+
+.bar-chart--right {
+  position: relative;
+  box-sizing: border-box;
+  text-align: right;
+  border-top-color: #75b800;
+  border-top-width: 4px;
+  border-top-style: solid;
+  right: 0;
+  flex: var(--fe-delay);
+  padding: 8px 10px;
+  height: 100%;
+}
+
 .graphs {
   width: 100%;
 }
