@@ -209,7 +209,7 @@ class AI():
     def applyMask(self,a,x):
         id_ = self.IDs[x]
         l = list(self.IDs.values())
-        b = np.where(a == (np.array(id_)), 256, a)
+        b = np.where(a == (np.array(id_)), 255, a)
         c = np.where(np.isin(a, l), 128, a)
         c = c/255
         return np.reshape(c,(-1 , self.shape, self.shape,1))
