@@ -6,7 +6,7 @@ import os
 import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 from ai import AI
-
+from plotting import PLOTTING
 DEBUG_MODE = False
 
 
@@ -15,6 +15,7 @@ class WebSocketServer:
 
     def __init__(self):
         self.nes = AI()
+        self.plotting = PLOTTING()
         self.generation = 0
         self.model = []
         self.previousMessageData = None
@@ -66,6 +67,7 @@ class WebSocketServer:
                 print("evole generation...")
             self.nes.saveModel(self.generation)
             self.nes.updateModel(data)
+            self.nes.logging(data)
             self.generation = self.generation +1
             if DEBUG_MODE:
                print("done...")
@@ -77,7 +79,8 @@ class WebSocketServer:
                 if DEBUG_MODE:
                     print("starting new generation...")
                 if self.nes.printFrameCount() == 1 or len(snakeIds) == 0:
-                    await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation})
+                    html = self.plotting.energyIntake()
+                    await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation, "graph": str(html)})
                 else:
                     if DEBUG_MODE:
                         print("predicting...")

@@ -19,7 +19,7 @@ import math
 class AI():
     def __init__(self):
         self.sigma = 0.1 # noise standard deviation
-        self.alpha = 0.001 
+        self.alpha = 0.1 
         self.shape = 100 #input size of NN
         self.N = None # dict to store n noiseMatrix
         self.W_try = None # dict to store weights
@@ -31,7 +31,8 @@ class AI():
         self.FramesPerEpoch = 500
         self.population = None
         self.nonTrainableLayers = []
-        
+        self.FilePathLogs = "./logs/"
+
     def startModel(self,dict_):
         self.IDs = dict_
         self.buildModel()
@@ -209,7 +210,8 @@ class AI():
     def applyMask(self,a,x):
         id_ = self.IDs[x]
         l = list(self.IDs.values())
-        b = np.where(a == (np.array(id_)), 255, a)
+        l.remove(id_)
+        b = np.where(a == id_, 255, a)
         c = np.where(np.isin(b, l), 128, b)
         c = c/255
         return np.reshape(c,(-1 , self.shape, self.shape,1))
@@ -224,7 +226,7 @@ class AI():
         file_  =str(files[0]).split('\\')[1]
         return file_
 
-
-    
-
-    
+    def logging(self,dict_):
+        self.FilePathLogs
+        with open (self.FilePathLogs+"logs.csv",'a') as file:
+            file.write(str(dict_)+'\n')

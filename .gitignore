@@ -1,6 +1,6 @@
 backend/models
 backend/__pycache__
-backend/log
+backend/logs
 backend/plots
 
 frontend/node_modules
