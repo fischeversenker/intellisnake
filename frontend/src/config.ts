@@ -1,9 +1,9 @@
 export class Config {
-  static GENERATION_SNAKE_COUNT = 5;
+  static GENERATION_SNAKE_COUNT = 20;
   static SNAKE_LENGTH = 50;
   static SNAKE_ENERGY_LEVEL_INITIAL = 1500;
-  static SNAKE_HEAD_SIZE = 12;
-  static SNAKE_TAIL_SIZE = 8;
+  static SNAKE_HEAD_SIZE = 8;
+  static SNAKE_TAIL_SIZE = 5;
   static STARTING_BODY_ID = 666;
   static TEMP_RENDER_WIDTH = 100;
   static TEMP_RENDER_HEIGHT = 100;

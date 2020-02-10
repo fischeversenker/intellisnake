@@ -65,8 +65,8 @@ export class World {
     }
 
     if (Math.random() > 0.99) {
-      const x = this.sampleNormalDistribution() * this.width;
-      const y = this.sampleNormalDistribution() * this.height;
+      const x = 0.3*this.sampleNormalDistribution() * this.width;
+      const y = 0.3*this.sampleNormalDistribution() * this.height;
       const foodBody = this.physics.getFood(x, y);
       MWorld.add(this.physics.world, foodBody);
       const food = new Food(foodBody.id, foodBody, 500);
@@ -117,7 +117,7 @@ export class World {
         snake = this.snakes.find(snake => snake.id === pair.bodyB.id);
       }
       if (snake) {
-        snake.energyLevel = snake.energyLevel - 80;
+        snake.energyLevel = snake.energyLevel - 300;
       }
     });
 

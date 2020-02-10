@@ -6,7 +6,7 @@ import os
 import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 from ai import AI
-from plotting import PLOTTING
+
 DEBUG_MODE = False
 
 
@@ -14,8 +14,7 @@ class WebSocketServer:
     global DEBUG_MODE
 
     def __init__(self):
-        self.nes = AI()
-        self.plotting = PLOTTING()
+        self.ai = AI()
         self.generation = 0
         self.model = []
         self.previousMessageData = None
@@ -24,7 +23,7 @@ class WebSocketServer:
     def start(self):
         print("server running...")
         return websockets.serve(self.communication, "localhost", 8765) #change localhost to ip "192.168.1.146"
-        
+
     def processMessageTypeData(self, messageData):
         return messageData["matrix"],messageData["snakeIds"]
 
@@ -43,12 +42,12 @@ class WebSocketServer:
 
         if DEBUG_MODE:
             print("Processing new message:  id: {},  type: {},  len: {}".format(messageId, messageType, len(messageData)))
-      
+
         if messageType == "start":
             data = self.processMessageTypeStart(messageData)
             if DEBUG_MODE:
                 print("starting...")
-            self.nes.startModel(data)
+            self.ai.startModel(data)
             self.started = True
             self.generation = 0
             await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
@@ -57,7 +56,7 @@ class WebSocketServer:
             data = self.processMessageTypeStart(messageData)
             if DEBUG_MODE:
                 print("load data")
-            self.generation =self.nes.loadModel(data)
+            self.generation =self.ai.loadModel(data)
             await self.sendMessage(websocket, messageId, "start", data ={"generation": self.generation})
             self.started = True
 
@@ -65,9 +64,9 @@ class WebSocketServer:
             data = self.processMessageTypeGeneration(messageData)
             if DEBUG_MODE:
                 print("evole generation...")
-            self.nes.saveModel(self.generation)
-            self.nes.updateModel(data)
-            self.nes.logging(data)
+            self.ai.saveModel(self.generation)
+            self.ai.updateModel(data)
+            self.ai.logging(data)
             self.generation = self.generation +1
             if DEBUG_MODE:
                print("done...")
@@ -78,15 +77,16 @@ class WebSocketServer:
             if self.started:
                 if DEBUG_MODE:
                     print("starting new generation...")
-                if self.nes.printFrameCount() == 1 or len(snakeIds) == 0:
-                    html = self.plotting.energyIntake()
-                    await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation, "graph": str(html)})
+                if self.ai.printFrameCount() == 1 or len(snakeIds) == 0:
+                    #html = self.plotting.energyIntake()
+                    #await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation, "graph": str(html)})
+                    await self.sendMessage(websocket, messageId, "generation", {"generation": self.generation})
                 else:
                     if DEBUG_MODE:
                         print("predicting...")
-                    output_json = self.nes.runModel(matrix,snakeIds)
+                    output_json = self.ai.runModel(matrix,snakeIds)
                     await self.sendMessage(websocket, messageId, "data", output_json)
-                
+
             else:
                 await self.sendMessage(websocket, messageId, "error", "you need to send generation message before sending snake data")
 
